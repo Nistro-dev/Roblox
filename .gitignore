@@ -1,0 +1,13 @@
+# Fichiers Windows
+Thumbs.db
+Desktop.ini
+
+# Fichiers temporaires
+*.tmp
+*.bak
+*.swp
+*~
+
+# Logs
+*.log
+
