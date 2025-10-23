@@ -118,7 +118,7 @@ local function createMainGUI()
     testMoveBtn.Size = UDim2.new(1, -40, 0, 60)
     testMoveBtn.Position = UDim2.new(0, 20, 0, 70)
     testMoveBtn.BackgroundColor3 = Color3.fromRGB(50, 150, 255)
-    testMoveBtn.Text = "🎯 Pathfinding spam 100m"
+    testMoveBtn.Text = "👾 Aller au monstre le plus proche"
     testMoveBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
     testMoveBtn.TextSize = 16
     testMoveBtn.Font = Enum.Font.GothamBold
@@ -161,7 +161,7 @@ local function createMainGUI()
     infoLabel.Position = UDim2.new(0, 20, 0, 205)
     infoLabel.BackgroundColor3 = Color3.fromRGB(10, 10, 10)
     infoLabel.BorderSizePixel = 0
-    infoLabel.Text = "🎯 Pathfinding spam 100m (continue jusqu'à destination)\n📋 Copie les logs pour debug\n🗑️ Efface les logs\n\nINSERT = Toggle menu"
+    infoLabel.Text = "👾 Détection automatique du monstre le plus proche\n📋 Copie les logs pour debug\n🗑️ Efface les logs\n\nINSERT = Toggle menu"
     infoLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
     infoLabel.TextSize = 13
     infoLabel.Font = Enum.Font.Gotham
@@ -252,12 +252,12 @@ end
 
 function testMoveToMonster()
     if isPathfinding then
-        StarterGui:SetCore("SendNotification", {Title = "Pathfinding"; Text = "Déjà en cours!"; Duration = 2})
+        StarterGui:SetCore("SendNotification", {Title = "Monstre"; Text = "Déjà en cours!"; Duration = 2})
         return
     end
     
     isPathfinding = true
-    logPath("========== PATHFINDING SPAM ==========")
+    logPath("========== RECHERCHE MONSTRE ==========")
     
     local playerChar = player.Character
     if not playerChar or not playerChar:FindFirstChild("HumanoidRootPart") then
@@ -274,62 +274,47 @@ function testMoveToMonster()
     end
     
     local humanoidRootPart = playerChar.HumanoidRootPart
-    local startPos = humanoidRootPart.Position
-    targetPos = humanoidRootPart.Position + (humanoidRootPart.CFrame.LookVector * 100)
-    local distance = (targetPos - startPos).Magnitude
     
-    logPath(string.format("[MOVE] Pathfinding spam vers %.0fm", distance))
-    StarterGui:SetCore("SendNotification", {Title = "Pathfinding"; Text = "Pathfinding spam..."; Duration = 2})
+    logPath("[MOVE] 🔍 Recherche du monstre le plus proche...")
+    StarterGui:SetCore("SendNotification", {Title = "Monstre"; Text = "Recherche monstre..."; Duration = 2})
     
-    local function spamPathfinding()
+    local function findAndMoveToMonster()
         if not isPathfinding then return end
         
-        local currentPos = humanoidRootPart.Position
-        local distanceToTarget = (currentPos - targetPos).Magnitude
+        local nearestMonster, nearestDistance = findNearestMonster()
         
-        if distanceToTarget < 5 then
+        if not nearestMonster then
+            logPath("[MOVE] ❌ Aucun monstre trouvé")
+            StarterGui:SetCore("SendNotification", {Title = "Monstre"; Text = "Aucun monstre!"; Duration = 2})
             isPathfinding = false
-            logPath("[MOVE] ✅ Arrivé à destination!")
-            StarterGui:SetCore("SendNotification", {Title = "Pathfinding"; Text = "Arrivé à destination!"; Duration = 2})
             return
         end
         
-        logPath(string.format("[MOVE] Distance restante: %.1fm", distanceToTarget))
+        logPath(string.format("[MOVE] 🎯 Monstre trouvé: %s à %.1fm", nearestMonster.Name, nearestDistance))
         
-        local path = PathfindingService:CreatePath({
-            AgentRadius = 3,
-            AgentHeight = 5,
-            AgentCanJump = true,
-            AgentMaxSlope = 60,
-            Costs = {Water = 20}
-        })
-        
-        local success, errorMessage = pcall(function()
-            path:ComputeAsync(currentPos, targetPos)
-        end)
-        
-        if success and path.Status == Enum.PathStatus.Success then
-            local waypoints = path:GetWaypoints()
-            logPath(string.format("[MOVE] Chemin trouvé: %d waypoints", #waypoints))
-            
-            if #waypoints > 1 then
-                local nextWaypoint = waypoints[2]
-                humanoid:MoveTo(nextWaypoint.Position)
-                
-                if nextWaypoint.Action == Enum.PathWaypointAction.Jump then
-                    humanoid.Jump = true
-                end
-            end
-        else
-            logPath("[MOVE] Pathfinding échoué - Mouvement direct")
-            humanoid:MoveTo(targetPos)
+        if nearestDistance < 10 then
+            isPathfinding = false
+            logPath("[MOVE] ✅ Arrivé au monstre!")
+            StarterGui:SetCore("SendNotification", {Title = "Monstre"; Text = "Arrivé au monstre!"; Duration = 2})
+            return
         end
         
-        task.wait(0.1)
-        spamPathfinding()
+        local monsterPos = nearestMonster.HumanoidRootPart.Position
+        local currentPos = humanoidRootPart.Position
+        local direction = (monsterPos - currentPos).Unit
+        
+        local moveDistance = math.min(nearestDistance * 0.3, 15)
+        local targetPos = currentPos + (direction * moveDistance)
+        
+        logPath(string.format("[MOVE] 🚀 Déplacement vers monstre (%.1fm restant)", nearestDistance))
+        
+        humanoid:MoveTo(targetPos)
+        
+        task.wait(0.5)
+        findAndMoveToMonster()
     end
     
-    spamPathfinding()
+    findAndMoveToMonster()
     
     task.delay(60, function()
         isPathfinding = false
