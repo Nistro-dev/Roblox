@@ -279,10 +279,10 @@ function testMoveToMonster()
     logPath(string.format("[MOVE] Test: Avancer de 100m devant"))
     
     local path = PathfindingService:CreatePath({
-        AgentRadius = 2,
+        AgentRadius = 3,
         AgentHeight = 5,
         AgentCanJump = true,
-        AgentMaxSlope = 45,
+        AgentMaxSlope = 60,
         Costs = {Water = 20}
     })
     
@@ -318,6 +318,7 @@ function testMoveToMonster()
         reachedConnection = humanoid.MoveToFinished:Connect(function(reached)
             if reached then
                 consecutiveFailures = 0
+                logPath(string.format("[MOVE] Waypoint %d/%d atteint!", currentWaypoint - 1, #waypoints))
                 
                 if currentWaypoint <= #waypoints then
                     moveToNextWaypoint()
@@ -332,8 +333,9 @@ function testMoveToMonster()
                 local lastWaypointPos = waypoints[currentWaypoint - 1].Position
                 local distToWaypoint = (currentPos - lastWaypointPos).Magnitude
                 
-                if distToWaypoint < 5 then
+                if distToWaypoint < 15 then
                     consecutiveFailures = 0
+                    logPath(string.format("[MOVE] Waypoint %d/%d OK (tolérance %.1fm)", currentWaypoint - 1, #waypoints, distToWaypoint))
                     
                     if currentWaypoint <= #waypoints then
                         moveToNextWaypoint()
@@ -345,18 +347,24 @@ function testMoveToMonster()
                     end
                 else
                     consecutiveFailures = consecutiveFailures + 1
+                    logPath(string.format("[MOVE] Échec %d/10 - Distance: %.1fm", consecutiveFailures, distToWaypoint))
                     
-                    if consecutiveFailures >= 3 then
+                    if consecutiveFailures >= 10 then
                         pathBlocked = true
                         reachedConnection:Disconnect()
                         isPathfinding = false
                         
                         local distanceToTarget = (currentPos - targetPos).Magnitude
                         logPath(string.format("[MOVE] Bloqué - Distance restante: %.0fm", distanceToTarget))
-                        StarterGui:SetCore("SendNotification", {Title = "Pathfinding"; Text = "Bloqué!"; Duration = 3})
+                        StarterGui:SetCore("SendNotification", {Title = "Pathfinding"; Text = "Bloqué après 10 échecs!"; Duration = 3})
                     else
+                        logPath("[MOVE] On force le passage au waypoint suivant...")
                         if currentWaypoint <= #waypoints then
                             moveToNextWaypoint()
+                        else
+                            reachedConnection:Disconnect()
+                            isPathfinding = false
+                            logPath("[MOVE] Fin du chemin (forcé)")
                         end
                     end
                 end
