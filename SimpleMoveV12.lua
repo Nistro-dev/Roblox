@@ -159,10 +159,10 @@ function moveTowardTarget()
     -- Fonction interne pour suivre un chemin complet
     local function followPath(targetPos)
         local path = PathfindingService:CreatePath({
-            AgentRadius = 2.5,
-            AgentHeight = 5,
+            AgentRadius = 25,
+            AgentHeight = 50,
             AgentCanJump = true,
-            AgentCanClimb = true,
+            AgentCanClimb = false,
         })
 
         path:ComputeAsync(root.Position, targetPos)
