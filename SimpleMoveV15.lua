@@ -172,25 +172,18 @@ function moveTowardTarget()
                 
                 -- Détection d'obstacle par raycast
                 local rayOrigin = root.Position + Vector3.new(0, 2, 0)
-                local rayDir = direction * 5
+                local rayDir = direction * 7  -- détecter plus tôt
                 local hit = workspace:Raycast(rayOrigin, rayDir, rayParams)
 
                 if hit then
-                    print(("⚠️ Mur détecté devant (%s à %.1f studs)"):format(hit.Instance.Name, hit.Distance))
-                    -- Contournement automatique  
-                    local strafeDir
-                    if math.random() < 0.5 then
-                        -- aller à droite
-                        strafeDir = root.CFrame.RightVector
-                    else
-                        -- aller à gauche
-                        strafeDir = -root.CFrame.RightVector
-                    end
+                    print(("⚠️ Obstacle détecté : %s à %.1f studs"):format(hit.Instance.Name, hit.Distance))
+                    -- Contournement plus fort
+                    local strafeDir = (math.random() < 0.5) and root.CFrame.RightVector or -root.CFrame.RightVector
+                    -- Combiner latéral + recul
+                    humanoid:Move(Vector3.new(strafeDir.X - direction.X * 0.3, 0, strafeDir.Z - direction.Z * 0.3), false)
 
-                    -- On bouge latéralement pendant un court instant
-                    humanoid:Move(Vector3.new(strafeDir.X, 0, strafeDir.Z), false)
-                    task.wait(0.4)  -- durée d'esquive
-                    -- Puis on reprend vers la cible
+                    task.wait(0.8)  -- durée d'esquive plus longue
+                    -- Puis reprendre vers la cible
                     humanoid:Move(Vector3.new(direction.X, 0, direction.Z), false)
                 else
                     humanoid:Move(Vector3.new(direction.X, 0, direction.Z), false)
