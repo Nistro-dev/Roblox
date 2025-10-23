@@ -308,13 +308,20 @@ function testMoveToMonster()
             local waypoints = path:GetWaypoints()
             print(string.format("[MOVE] %d waypoints - déplacement en cours...", #waypoints))
             
+            game:GetService("StarterGui"):SetCore("SendNotification", {
+                Title = "Pathfinding";
+                Text = "Déplacement vers " .. monster.Name;
+                Duration = 2;
+            })
+            
             local currentWaypoint = 2
             local pathBlocked = false
             
             local function moveToNextWaypoint()
                 if currentWaypoint <= #waypoints and not pathBlocked then
                     local waypoint = waypoints[currentWaypoint]
-                    print(string.format("[MOVE] Waypoint %d/%d - Distance: %.1fm", currentWaypoint, #waypoints, (waypoint.Position - humanoidRootPart.Position).Magnitude))
+                    local distToWaypoint = (waypoint.Position - humanoidRootPart.Position).Magnitude
+                    print(string.format("[MOVE] ➤ Waypoint %d/%d - Distance: %.1fm", currentWaypoint, #waypoints, distToWaypoint))
                     
                     humanoid:MoveTo(waypoint.Position)
                     
@@ -363,6 +370,7 @@ function testMoveToMonster()
                 end
             end)
             
+            print("[MOVE] 🚀 Démarrage du pathfinding...")
             moveToNextWaypoint()
             
             task.delay(30, function()
@@ -379,8 +387,6 @@ function testMoveToMonster()
             })
         end
     end
-    
-    print("========== FIN TEST ==========")
 end
 
 -- Fonction pour afficher/cacher le menu avec animation
