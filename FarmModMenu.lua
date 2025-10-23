@@ -36,7 +36,7 @@ local savedPosition = nil
 
 -- Configuration
 local TOGGLE_KEY = Enum.KeyCode.Insert
-local MENU_SIZE = UDim2.new(0, 450, 0, 300)
+local MENU_SIZE = UDim2.new(0, 450, 0, 360)
 local ANIMATION_TIME = 0.3
 local ENEMY_FOLDERS = {"Enemies", "NPCs", "Monsters", "Mobs", "Dungeon", "DungeonMobs", "Boss", "Bosses", "IzvDf"}
 local detectedFolders = {}
@@ -56,7 +56,7 @@ local function createMainGUI()
     mainFrame = Instance.new("Frame")
     mainFrame.Name = "MainFrame"
     mainFrame.Size = MENU_SIZE
-    mainFrame.Position = savedPosition or UDim2.new(0.5, -225, 0.5, -150)
+    mainFrame.Position = savedPosition or UDim2.new(0.5, -225, 0.5, -180)
     mainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
     mainFrame.BorderSizePixel = 0
     mainFrame.Visible = false
@@ -128,10 +128,25 @@ local function createMainGUI()
     btnCorner.CornerRadius = UDim.new(0, 8)
     btnCorner.Parent = testMoveBtn
     
+    -- Bouton Désinjecter
+    local uninjectBtn = Instance.new("TextButton")
+    uninjectBtn.Size = UDim2.new(1, -40, 0, 50)
+    uninjectBtn.Position = UDim2.new(0, 20, 0, 145)
+    uninjectBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+    uninjectBtn.Text = "🗑️ Désinjecter le script"
+    uninjectBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    uninjectBtn.TextSize = 14
+    uninjectBtn.Font = Enum.Font.GothamBold
+    uninjectBtn.Parent = mainFrame
+    
+    local uninjectCorner = Instance.new("UICorner")
+    uninjectCorner.CornerRadius = UDim.new(0, 8)
+    uninjectCorner.Parent = uninjectBtn
+    
     -- Info label
     local infoLabel = Instance.new("TextLabel")
-    infoLabel.Size = UDim2.new(1, -40, 0, 130)
-    infoLabel.Position = UDim2.new(0, 20, 0, 145)
+    infoLabel.Size = UDim2.new(1, -40, 0, 120)
+    infoLabel.Position = UDim2.new(0, 20, 0, 210)
     infoLabel.BackgroundColor3 = Color3.fromRGB(10, 10, 10)
     infoLabel.BorderSizePixel = 0
     infoLabel.Text = "Utilise le pathfinding pour aller vers le monstre le plus proche.\n\nOuvre F9 pour voir les détails du déplacement.\n\nINSERT pour toggle le menu."
@@ -156,12 +171,48 @@ local function createMainGUI()
         testMoveToMonster()
     end)
     
+    uninjectBtn.MouseButton1Click:Connect(function()
+        uninjectScript()
+    end)
+    
     -- Rendre le menu déplaçable
     makeDraggable(mainFrame, titleBar)
     
     print("[MOD MENU] Interface créée avec succès!")
     
     return screenGui
+end
+
+-- Fonction pour désinjecter proprement le script
+function uninjectScript()
+    print("[MOD MENU] ========== DÉSINJECTION ==========")
+    
+    game:GetService("StarterGui"):SetCore("SendNotification", {
+        Title = "Mod Menu";
+        Text = "Désinjection en cours...";
+        Duration = 2;
+    })
+    
+    -- Désactiver le flag global
+    _G.FARM_MOD_MENU_ACTIVE = false
+    print("[MOD MENU] ✓ Flag global désactivé")
+    
+    -- Supprimer le GUI
+    if screenGui then
+        screenGui:Destroy()
+        print("[MOD MENU] ✓ Interface supprimée")
+    end
+    
+    print("[MOD MENU] ✓ Script désinjecté avec succès!")
+    print("[MOD MENU] ========== FIN DÉSINJECTION ==========")
+    
+    task.wait(0.5)
+    
+    game:GetService("StarterGui"):SetCore("SendNotification", {
+        Title = "Mod Menu";
+        Text = "✓ Script désinjecté!";
+        Duration = 3;
+    })
 end
 
 -- Fonction pour rendre un frame déplaçable
@@ -395,7 +446,7 @@ function toggleMenu()
     
     if menuVisible then
         mainFrame.Visible = true
-        mainFrame.Position = savedPosition or UDim2.new(0.5, -225, 0.5, -150)
+        mainFrame.Position = savedPosition or UDim2.new(0.5, -225, 0.5, -180)
         mainFrame.Size = UDim2.new(0, 0, 0, 0)
         
         local openTween = TweenService:Create(
