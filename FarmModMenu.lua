@@ -16,29 +16,44 @@ repeat task.wait() until character
 
 print("[MOD MENU] Joueur détecté!")
 
--- ===== NETTOYAGE DE L'ANCIENNE VERSION =====
+-- ===== NETTOYAGE DE L'ANCIENNE VERSION (OPTIMISÉ) =====
+print("[MOD MENU] Nettoyage de l'ancienne version...")
+
 -- Supprimer l'ancien GUI
 local oldGui = player.PlayerGui:FindFirstChild("FarmModMenuGUI")
 if oldGui then
     oldGui:Destroy()
-    print("[MOD MENU] Ancien GUI supprimé")
+    print("[MOD MENU] ✓ Ancien GUI supprimé")
 end
 
--- Supprimer tous les anciens ESP
-for _, obj in pairs(game.Workspace:GetDescendants()) do
-    if obj.Name == "EnemyESP" then
-        obj:Destroy()
+-- Supprimer tous les anciens ESP (OPTIMISÉ - seulement dans les dossiers d'ennemis)
+local cleanupFolders = {"Enemies", "NPCs", "Monsters", "Mobs", "Dungeon", "DungeonMobs", "Boss", "Bosses"}
+local espCleaned = 0
+
+for _, folderName in pairs(cleanupFolders) do
+    local folder = game.Workspace:FindFirstChild(folderName)
+    if folder then
+        for _, obj in pairs(folder:GetDescendants()) do
+            if obj.Name == "EnemyESP" and obj:IsA("Highlight") then
+                obj:Destroy()
+                espCleaned = espCleaned + 1
+            end
+        end
     end
 end
 
--- Supprimer le dossier ESP s'il existe
-local oldESPFolder = game.CoreGui:FindFirstChild("EnemyESPFolder")
-if oldESPFolder then
-    oldESPFolder:Destroy()
-    print("[MOD MENU] Anciens ESP supprimés")
+if espCleaned > 0 then
+    print("[MOD MENU] ✓ " .. espCleaned .. " anciens ESP supprimés")
 end
 
-print("[MOD MENU] Nettoyage terminé!")
+-- Forcer l'arrêt de toutes les anciennes boucles en mettant un flag global
+_G.FARM_MOD_MENU_ACTIVE = false
+task.wait(0.5) -- Attendre que les anciennes boucles s'arrêtent
+
+print("[MOD MENU] ✓ Nettoyage terminé!")
+
+-- Activer cette instance du script
+_G.FARM_MOD_MENU_ACTIVE = true
 
 -- Variables globales
 local menuVisible = false
@@ -457,9 +472,9 @@ function toggleESP()
         
         -- Boucle de mise à jour continue (optimisée avec spawn)
         espConnection = task.spawn(function()
-            while espEnabled do
+            while espEnabled and _G.FARM_MOD_MENU_ACTIVE do
                 task.wait(ESP_UPDATE_INTERVAL)
-                if espEnabled then
+                if espEnabled and _G.FARM_MOD_MENU_ACTIVE then
                     updateESP()
                 end
             end
@@ -545,12 +560,13 @@ end)
 print("=================================")
 print("[MOD MENU] ✓ Script chargé avec succès!")
 print("[MOD MENU] ✓ Appuyez sur INSERT pour ouvrir le menu")
+print("[MOD MENU] ℹ️  Tu peux réinjecter sans restart Roblox!")
 print("=================================")
 
 -- Notification dans le jeu
 game:GetService("StarterGui"):SetCore("SendNotification", {
-    Title = "Auto Farm Mod Menu";
-    Text = "Chargé! Appuie sur INSERT";
+    Title = "✓ Auto Farm Mod Menu";
+    Text = "Prêt! Appuie sur INSERT";
     Duration = 5;
 })
 
