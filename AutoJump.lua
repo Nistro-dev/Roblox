@@ -1,13 +1,20 @@
 -- Script Auto Jump pour Roblox
 -- Projet d'école
 
+print("[AUTO JUMP] Script chargé, démarrage...")
+
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 
 local player = Players.LocalPlayer
+repeat task.wait() until player
+
 local character = player.Character or player.CharacterAdded:Wait()
+repeat task.wait() until character
 local humanoid = character:WaitForChild("Humanoid")
+
+print("[AUTO JUMP] Joueur et personnage détectés!")
 
 -- Variables
 local autoJumpEnabled = false
@@ -15,10 +22,21 @@ local connection = nil
 
 -- Fonction pour créer l'interface graphique (GUI)
 local function createGUI()
+    print("[AUTO JUMP] Création de l'interface...")
+    
+    -- Supprimer l'ancien GUI s'il existe
+    local oldGui = player.PlayerGui:FindFirstChild("AutoJumpGUI")
+    if oldGui then
+        oldGui:Destroy()
+        print("[AUTO JUMP] Ancien GUI supprimé")
+    end
+    
     local screenGui = Instance.new("ScreenGui")
     screenGui.Name = "AutoJumpGUI"
     screenGui.ResetOnSpawn = false
     screenGui.Parent = player:WaitForChild("PlayerGui")
+    
+    print("[AUTO JUMP] ScreenGui créé!")
     
     -- Frame principale
     local mainFrame = Instance.new("Frame")
@@ -122,6 +140,8 @@ local function createGUI()
         end
     end)
     
+    print("[AUTO JUMP] Interface créée avec succès!")
+    
     return screenGui, toggleButton, closeButton
 end
 
@@ -144,7 +164,12 @@ local function toggleAutoJump(toggleButton)
             end
         end)
         
-        print("Auto Jump activé!")
+        print("[AUTO JUMP] ✓ Auto Jump activé!")
+        game:GetService("StarterGui"):SetCore("SendNotification", {
+            Title = "Auto Jump";
+            Text = "Activé! ✓";
+            Duration = 2;
+        })
     else
         toggleButton.Text = "Auto Jump: OFF"
         toggleButton.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
@@ -155,7 +180,12 @@ local function toggleAutoJump(toggleButton)
             connection = nil
         end
         
-        print("Auto Jump désactivé!")
+        print("[AUTO JUMP] ✗ Auto Jump désactivé!")
+        game:GetService("StarterGui"):SetCore("SendNotification", {
+            Title = "Auto Jump";
+            Text = "Désactivé";
+            Duration = 2;
+        })
     end
 end
 
@@ -202,5 +232,16 @@ player.CharacterAdded:Connect(function(newCharacter)
     end
 end)
 
-print("Script Auto Jump chargé! Appuie sur 'J' ou utilise le menu.")
+print("=================================")
+print("[AUTO JUMP] ✓ Script chargé avec succès!")
+print("[AUTO JUMP] ✓ Menu affiché à l'écran")
+print("[AUTO JUMP] Appuie sur 'J' pour toggle")
+print("=================================")
+
+-- Notification dans le jeu
+game:GetService("StarterGui"):SetCore("SendNotification", {
+    Title = "Auto Jump";
+    Text = "Script chargé! Appuie sur J";
+    Duration = 5;
+})
 
