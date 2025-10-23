@@ -325,7 +325,6 @@ function testMoveToMonster()
             humanoid:MoveTo(targetPos)
         end
         
-        task.wait(2)
         spamPathfinding()
     end
     
