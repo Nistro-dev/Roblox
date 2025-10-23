@@ -11,7 +11,7 @@ local statusLabel = nil
 local target = nil
 
 local TOGGLE_KEY = Enum.KeyCode.Insert
-local DETECTION_RADIUS = 50
+local DETECTION_RADIUS = 200
 
 function createGUI()
     if screenGui then screenGui:Destroy() end
@@ -108,28 +108,41 @@ function getNearestMonster()
 
     local root = char.HumanoidRootPart
     local nearest, minDist = nil, DETECTION_RADIUS
+    local foundModels = {}
 
     for _, obj in ipairs(workspace:GetDescendants()) do
         if obj:IsA("Model") and obj ~= char then
             local humanoid = obj:FindFirstChildOfClass("Humanoid")
             local hrp = obj:FindFirstChild("HumanoidRootPart")
             if humanoid and hrp and humanoid.Health > 0 then
-                -- Vérifier que c'est pas un joueur
+                local dist = (root.Position - hrp.Position).Magnitude
                 local isPlayer = Players:GetPlayerFromCharacter(obj)
-                if not isPlayer then
-                    local dist = (root.Position - hrp.Position).Magnitude
-                    if dist < minDist then
+                
+                if dist < DETECTION_RADIUS then
+                    table.insert(foundModels, {
+                        name = obj.Name,
+                        distance = dist,
+                        isPlayer = isPlayer ~= nil
+                    })
+                    
+                    if not isPlayer and dist < minDist then
                         nearest = obj
                         minDist = dist
-                        print(("🎯 Monstre trouvé: %s à %.1fm"):format(obj.Name, dist))
                     end
                 end
             end
         end
     end
 
+    -- Afficher tous les modèles trouvés
+    print("🔍 Modèles trouvés dans le rayon:")
+    for _, model in ipairs(foundModels) do
+        local type = model.isPlayer and "👤 JOUEUR" or "👾 MONSTRE"
+        print(("  %s %s à %.1fm"):format(type, model.name, model.distance))
+    end
+
     if nearest then
-        print(("✅ Cible: %s (%.1fm)"):format(nearest.Name, minDist))
+        print(("✅ Cible choisie: %s (%.1fm)"):format(nearest.Name, minDist))
     else
         print("❌ Aucun monstre dans le rayon")
     end

@@ -8,14 +8,16 @@ local screenGui = nil
 local mainFrame = nil
 local toggleBtn = nil
 local statusLabel = nil
+local target = nil
 
 local TOGGLE_KEY = Enum.KeyCode.Insert
+local DETECTION_RADIUS = 200
 
 function createGUI()
     if screenGui then screenGui:Destroy() end
     
     screenGui = Instance.new("ScreenGui")
-    screenGui.Name = "SimpleMoveV6"
+    screenGui.Name = "SimpleMoveV9"
     screenGui.Parent = player.PlayerGui
     
     mainFrame = Instance.new("Frame")
@@ -45,7 +47,7 @@ function createGUI()
     title.Size = UDim2.new(1, -20, 0, 25)
     title.Position = UDim2.new(0, 15, 0, 8)
     title.BackgroundTransparency = 1
-    title.Text = "AUTO MOVE"
+    title.Text = "AUTO MOVE V9"
     title.TextColor3 = Color3.fromRGB(220, 220, 220)
     title.TextSize = 14
     title.Font = Enum.Font.GothamMedium
@@ -97,36 +99,96 @@ function createGUI()
     end)
 end
 
-function toggleMove()
-    isMoving = not isMoving
-    if isMoving then
-        print("▶️ Avance activée")
-        toggleBtn.Text = "⏸ STOP"
-        toggleBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
-        statusLabel.Text = "RUNNING"
-        statusLabel.TextColor3 = Color3.fromRGB(0, 200, 100)
-    else
-        print("⏹️ Avance stoppée")
-        toggleBtn.Text = "▶ START"
-        toggleBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-        statusLabel.Text = "IDLE"
-        statusLabel.TextColor3 = Color3.fromRGB(120, 120, 120)
+function getNearestMonster()
+    local char = player.Character
+    if not char or not char:FindFirstChild("HumanoidRootPart") then
+        print("❌ Pas de HumanoidRootPart")
+        return nil
     end
+
+    local root = char.HumanoidRootPart
+    local nearest, minDist = nil, DETECTION_RADIUS
+    local foundModels = {}
+
+    for _, obj in ipairs(workspace:GetDescendants()) do
+        if obj:IsA("Model") and obj ~= char then
+            local humanoid = obj:FindFirstChildOfClass("Humanoid")
+            local hrp = obj:FindFirstChild("HumanoidRootPart")
+            if humanoid and hrp and humanoid.Health > 0 then
+                local dist = (root.Position - hrp.Position).Magnitude
+                local isPlayer = Players:GetPlayerFromCharacter(obj)
+                
+                if dist < DETECTION_RADIUS then
+                    table.insert(foundModels, {
+                        name = obj.Name,
+                        distance = dist,
+                        isPlayer = isPlayer ~= nil
+                    })
+                    
+                    if not isPlayer and dist < minDist then
+                        nearest = obj
+                        minDist = dist
+                    end
+                end
+            end
+        end
+    end
+
+    -- Afficher tous les modèles trouvés
+    print("🔍 Modèles trouvés dans le rayon:")
+    for _, model in ipairs(foundModels) do
+        local type = model.isPlayer and "👤 JOUEUR" or "👾 MONSTRE"
+        print(("  %s %s à %.1fm"):format(type, model.name, model.distance))
+    end
+
+    if nearest then
+        print(("✅ Cible choisie: %s (%.1fm)"):format(nearest.Name, minDist))
+    else
+        print("❌ Aucun monstre dans le rayon")
+    end
+
+    return nearest
 end
 
-function startMoving()
+function moveTowardTarget()
     local char = player.Character or player.CharacterAdded:Wait()
     local humanoid = char:WaitForChild("Humanoid")
     local root = char:WaitForChild("HumanoidRootPart")
 
-    print("✅ Démarrage déplacement en ligne droite")
-
     RunService.RenderStepped:Connect(function()
         if isMoving and humanoid and root then
-            local forward = root.CFrame.LookVector
-            humanoid:Move(forward, true) -- ✅ "true" = relativeToCamera forcé
+            if not target or not target:FindFirstChild("HumanoidRootPart")
+               or (root.Position - target.HumanoidRootPart.Position).Magnitude > DETECTION_RADIUS then
+                target = getNearestMonster()
+            end
+
+            if target and target:FindFirstChild("HumanoidRootPart") then
+                local direction = (target.HumanoidRootPart.Position - root.Position).Unit
+                humanoid:Move(Vector3.new(direction.X, 0, direction.Z), false)
+            else
+                humanoid:Move(Vector3.zero)
+            end
         end
     end)
+end
+
+function toggleMove()
+    isMoving = not isMoving
+    if isMoving then
+        print("▶️ Auto-move activé")
+        toggleBtn.Text = "⏸ STOP"
+        toggleBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+        statusLabel.Text = "RUNNING"
+        statusLabel.TextColor3 = Color3.fromRGB(0, 200, 100)
+        target = getNearestMonster()
+    else
+        print("⏹️ Auto-move désactivé")
+        toggleBtn.Text = "▶ START"
+        toggleBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+        statusLabel.Text = "IDLE"
+        statusLabel.TextColor3 = Color3.fromRGB(120, 120, 120)
+        target = nil
+    end
 end
 
 function makeDraggable(frame)
@@ -169,6 +231,6 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
     end
 end)
 
-startMoving()
+moveTowardTarget()
 
-print("Simple Move V6 chargé! Appuie sur INSERT pour toggle")
+print("Auto Move V9 chargé! Debug ciblé sur monstres uniquement")
