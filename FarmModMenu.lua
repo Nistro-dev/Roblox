@@ -463,6 +463,8 @@ function testMoveToMonster()
                 Duration = 2;
             })
             
+            logPath("[MOVE] 🚀 Initialisation du mouvement...")
+            
             local currentWaypoint = 2
             local pathBlocked = false
             
@@ -630,8 +632,21 @@ function testMoveToMonster()
                 end
             end)
             
-            print("[MOVE] 🚀 Démarrage du pathfinding...")
-            moveToNextWaypoint()
+            logPath("[MOVE] 🚀 Démarrage du pathfinding...")
+            
+            -- Sécurité: Capturer les erreurs
+            local success, err = pcall(function()
+                moveToNextWaypoint()
+            end)
+            
+            if not success then
+                logPath("[MOVE] ❌ ERREUR CRITIQUE: " .. tostring(err))
+                game:GetService("StarterGui"):SetCore("SendNotification", {
+                    Title = "Erreur Pathfinding";
+                    Text = "Erreur! Check F9";
+                    Duration = 3;
+                })
+            end
             
             task.delay(30, function()
                 if reachedConnection then reachedConnection:Disconnect() end
