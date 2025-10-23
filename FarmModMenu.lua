@@ -27,7 +27,7 @@ if oldGui then
 end
 
 -- Supprimer tous les anciens ESP (OPTIMISÉ - seulement dans les dossiers d'ennemis)
-local cleanupFolders = {"Enemies", "NPCs", "Monsters", "Mobs", "Dungeon", "DungeonMobs", "Boss", "Bosses"}
+local cleanupFolders = {"Enemies", "NPCs", "Monsters", "Mobs", "Dungeon", "DungeonMobs", "Boss", "Bosses", "IzvDf"}
 local espCleaned = 0
 
 for _, folderName in pairs(cleanupFolders) do
@@ -70,7 +70,8 @@ local TOGGLE_KEY = Enum.KeyCode.Insert -- Touche pour ouvrir/fermer le menu
 local MENU_SIZE = UDim2.new(0, 450, 0, 500)
 local ANIMATION_TIME = 0.3
 local ESP_UPDATE_INTERVAL = 2 -- Mettre à jour l'ESP toutes les 2 secondes (optimisé)
-local ENEMY_FOLDERS = {"Enemies", "NPCs", "Monsters", "Mobs", "Dungeon", "DungeonMobs", "Boss", "Bosses"} -- Dossiers où chercher les ennemis
+local ENEMY_FOLDERS = {"Enemies", "NPCs", "Monsters", "Mobs", "Dungeon", "DungeonMobs", "Boss", "Bosses", "IzvDf"} -- Dossiers où chercher les ennemis
+local detectedFolders = {} -- Dossiers détectés automatiquement pendant le debug
 
 -- Fonction pour créer le GUI principal
 local function createMainGUI()
@@ -418,6 +419,25 @@ function debugScanEntities(outputLabel)
                     local parentInfo = "Workspace"
                     if model.Parent and model.Parent ~= game.Workspace then
                         parentInfo = model.Parent.Name
+                        
+                        -- Si c'est un monstre, ajouter automatiquement le dossier à la liste
+                        if entityType == "👾 MONSTRE" then
+                            local folderName = model.Parent.Name
+                            local alreadyInList = false
+                            
+                            for _, existing in pairs(ENEMY_FOLDERS) do
+                                if existing == folderName then
+                                    alreadyInList = true
+                                    break
+                                end
+                            end
+                            
+                            if not alreadyInList and not detectedFolders[folderName] then
+                                table.insert(ENEMY_FOLDERS, folderName)
+                                detectedFolders[folderName] = true
+                                print("[DEBUG] ✓ Nouveau dossier d'ennemis détecté et ajouté: " .. folderName)
+                            end
+                        end
                     end
                     
                     table.insert(allEntities, {
@@ -478,6 +498,15 @@ function debugScanEntities(outputLabel)
         outputLabel.TextColor3 = Color3.fromRGB(100, 255, 100)
         
         print("[DEBUG] Total: " .. #allEntities .. " entités scannées")
+        
+        -- Afficher les dossiers d'ennemis
+        local folderList = "Dossiers ESP actifs: "
+        for i, folder in ipairs(ENEMY_FOLDERS) do
+            if i <= 5 then
+                folderList = folderList .. folder .. ", "
+            end
+        end
+        print("[DEBUG] " .. folderList)
         print("========== FIN DU SCAN ==========")
     end
     
