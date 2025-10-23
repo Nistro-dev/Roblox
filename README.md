@@ -1,29 +1,51 @@
-# 🎮 Roblox Auto Jump Script
+# 🎮 Roblox Scripts Collection
 
-Script Lua pour Roblox qui permet de sauter automatiquement dans les jeux.
+Collection de scripts Lua pour Roblox avec interfaces graphiques modernes et faciles à utiliser.
 
 ## 📋 Description
 
-Ce projet contient un script d'auto-jump pour Roblox avec une interface graphique moderne et facile à utiliser.
+Ce projet contient plusieurs scripts utilitaires pour Roblox :
+- **AutoJump** : Script d'auto-jump automatique
+- **FarmModMenu** : Mod menu pour farming automatique (en développement)
 
-## ✨ Fonctionnalités
+---
 
+## 🔹 AutoJump.lua
+
+### ✨ Fonctionnalités
 - ✅ Auto Jump automatique et continu
 - ✅ Interface graphique (GUI) moderne et déplaçable
 - ✅ Activation/Désactivation avec bouton ou touche **J**
 - ✅ Fonctionne après la respawn du personnage
-- ✅ Design propre et professionnel
+- ✅ Notifications visuelles
 
-## 🚀 Utilisation
+### 🚀 Utilisation
+```lua
+loadstring(game:HttpGet('https://raw.githubusercontent.com/Nistro-dev/Roblox/refs/heads/master/AutoJump.lua'))()
+```
 
-1. Ouvre Roblox avec un executor
-2. Copie le contenu du fichier `AutoJump.lua`
-3. Exécute le script dans le jeu
-4. Utilise le menu GUI ou appuie sur **J** pour activer/désactiver l'auto-jump
-
-## 📝 Raccourcis
-
+### 📝 Raccourcis
 - **J** : Active/Désactive l'auto-jump
+
+---
+
+## 🔹 FarmModMenu.lua
+
+### ✨ Fonctionnalités
+- ✅ Interface graphique moderne avec animations
+- ✅ Menu déplaçable et rétractable
+- ✅ Système de sections organisées
+- ✅ Raccourci clavier pour ouvrir/fermer
+- ✅ Design professionnel avec bordures lumineuses
+- 🔄 Fonctionnalités d'auto farm (à venir)
+
+### 🚀 Utilisation
+```lua
+loadstring(game:HttpGet('https://raw.githubusercontent.com/Nistro-dev/Roblox/refs/heads/master/FarmModMenu.lua'))()
+```
+
+### 📝 Raccourcis
+- **INSERT** : Ouvre/Ferme le mod menu
 
 ## 🎓 Projet Scolaire
 
