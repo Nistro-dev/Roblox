@@ -495,15 +495,21 @@ function testMoveToMonster()
             local pathBlocked = false
             
             local function moveToNextWaypoint()
-                print("[DEBUG] moveToNextWaypoint() APPELÉE - currentWaypoint: " .. currentWaypoint .. " / " .. #waypoints .. " - pathBlocked: " .. tostring(pathBlocked))
+                print("[DEBUG] ========== DEBUT moveToNextWaypoint ==========")
+                print("[DEBUG] Test 1")
+                print("[DEBUG] currentWaypoint =", currentWaypoint)
+                print("[DEBUG] #waypoints =", #waypoints)
+                print("[DEBUG] pathBlocked =", pathBlocked)
+                print("[DEBUG] Test 2 - Avant IF")
                 
                 if currentWaypoint <= #waypoints and not pathBlocked then
-                    print("[DEBUG] Condition OK, on entre dans le if")
+                    print("[DEBUG] *** DANS LE IF ***")
                     local waypoint = waypoints[currentWaypoint]
+                    print("[DEBUG] Waypoint récupéré")
                     local playerPos = humanoidRootPart.Position
+                    print("[DEBUG] PlayerPos OK")
                     local waypointPos = waypoint.Position
-                    
-                    print("[DEBUG] Waypoint récupéré, calcul des distances...")
+                    print("[DEBUG] WaypointPos OK")
                     
                     -- Calcul des distances
                     local distToWaypoint = (waypointPos - playerPos).Magnitude
@@ -554,13 +560,11 @@ function testMoveToMonster()
                     end
                     
                     currentWaypoint = currentWaypoint + 1
-                    print("[DEBUG] currentWaypoint incrémenté à: " .. currentWaypoint)
+                    print("[DEBUG] currentWaypoint incrémenté")
                 else
-                    print("[DEBUG] ❌ Condition FAUSSE - ne rentre PAS dans le if")
-                    print("[DEBUG] currentWaypoint: " .. currentWaypoint .. " <= " .. #waypoints .. " ?")
-                    print("[DEBUG] pathBlocked: " .. tostring(pathBlocked))
+                    print("[DEBUG] *** HORS DU IF ***")
                 end
-                print("[DEBUG] Fin de moveToNextWaypoint()")
+                print("[DEBUG] ========== FIN moveToNextWaypoint ==========")
             end
             
             local reachedConnection
