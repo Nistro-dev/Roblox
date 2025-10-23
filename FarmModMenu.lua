@@ -367,43 +367,73 @@ function testMoveToMonster()
             isPathfinding = false
         end)
     else
-        logPath("[MOVE] ❌ Pathfinding échoué - Essai mouvement direct...")
+        logPath("[MOVE] ❌ Pathfinding échoué - Essai mouvement par étapes...")
         
         local humanoidRootPart = playerChar.HumanoidRootPart
         local startPos = humanoidRootPart.Position
-        local directTarget = startPos + (humanoidRootPart.CFrame.LookVector * 100)
+        local targetPos = startPos + (humanoidRootPart.CFrame.LookVector * 100)
+        local distance = (targetPos - startPos).Magnitude
         
-        logPath("[MOVE] 🎯 Mouvement direct vers la cible")
-        StarterGui:SetCore("SendNotification", {Title = "Déplacement"; Text = "Mouvement direct..."; Duration = 2})
+        logPath(string.format("[MOVE] 🎯 Mouvement par étapes vers %.0fm", distance))
+        StarterGui:SetCore("SendNotification", {Title = "Déplacement"; Text = "Mouvement par étapes..."; Duration = 2})
         
-        humanoid:MoveTo(directTarget)
+        local stepDistance = 20
+        local currentStep = 0
+        local maxSteps = math.ceil(distance / stepDistance)
         
-        local directConnection
-        local startTime = tick()
-        
-        directConnection = humanoid.MoveToFinished:Connect(function(reached)
-            local elapsed = tick() - startTime
-            local currentPos = humanoidRootPart.Position
-            local distanceToTarget = (currentPos - directTarget).Magnitude
-            
-            if reached then
+        local function moveToNextStep()
+            if currentStep >= maxSteps or not isPathfinding then
                 isPathfinding = false
-                logPath("[MOVE] ✅ Arrivé à destination (mouvement direct)!")
+                logPath("[MOVE] ✅ Arrivé à destination (mouvement par étapes)!")
                 StarterGui:SetCore("SendNotification", {Title = "Déplacement"; Text = "Arrivé à destination!"; Duration = 2})
+                return
+            end
+            
+            currentStep = currentStep + 1
+            local stepProgress = (currentStep / maxSteps) * 100
+            local stepTarget = startPos + (humanoidRootPart.CFrame.LookVector * (stepDistance * currentStep))
+            
+            if stepDistance * currentStep > distance then
+                stepTarget = targetPos
+            end
+            
+            logPath(string.format("[MOVE] Étape %d/%d (%.0f%%) - Distance: %.1fm", currentStep, maxSteps, stepProgress, (stepTarget - humanoidRootPart.Position).Magnitude))
+            
+            humanoid:MoveTo(stepTarget)
+        end
+        
+        local stepConnection
+        local stepFailures = 0
+        
+        stepConnection = humanoid.MoveToFinished:Connect(function(reached)
+            local currentPos = humanoidRootPart.Position
+            local stepTarget = startPos + (humanoidRootPart.CFrame.LookVector * (stepDistance * currentStep))
+            local distToStep = (currentPos - stepTarget).Magnitude
+            
+            if reached or distToStep < 10 then
+                stepFailures = 0
+                logPath(string.format("[MOVE] Étape %d/%d atteinte!", currentStep, maxSteps))
+                task.wait(0.5)
+                moveToNextStep()
             else
-                if elapsed > 15 or distanceToTarget < 5 then
-                    isPathfinding = false
-                    logPath(string.format("[MOVE] ✅ Arrivé proche (%.1fm restant)", distanceToTarget))
-                    StarterGui:SetCore("SendNotification", {Title = "Déplacement"; Text = "Arrivé proche!"; Duration = 2})
+                stepFailures = stepFailures + 1
+                logPath(string.format("[MOVE] Échec étape %d/3 - Distance: %.1fm", stepFailures, distToStep))
+                
+                if stepFailures >= 3 then
+                    logPath("[MOVE] On force le passage à l'étape suivante...")
+                    stepFailures = 0
+                    task.wait(0.5)
+                    moveToNextStep()
                 else
-                    logPath(string.format("[MOVE] En cours... Distance: %.1fm", distanceToTarget))
-                    humanoid:MoveTo(directTarget)
+                    humanoid:MoveTo(stepTarget)
                 end
             end
         end)
         
-        task.delay(20, function()
-            if directConnection then directConnection:Disconnect() end
+        moveToNextStep()
+        
+        task.delay(30, function()
+            if stepConnection then stepConnection:Disconnect() end
             isPathfinding = false
         end)
     end
