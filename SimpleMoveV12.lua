@@ -18,7 +18,7 @@ function createGUI()
     if screenGui then screenGui:Destroy() end
     
     screenGui = Instance.new("ScreenGui")
-    screenGui.Name = "SimpleMoveV10"
+    screenGui.Name = "SimpleMoveV12"
     screenGui.Parent = player.PlayerGui
     
     mainFrame = Instance.new("Frame")
@@ -48,7 +48,7 @@ function createGUI()
     title.Size = UDim2.new(1, -20, 0, 25)
     title.Position = UDim2.new(0, 15, 0, 8)
     title.BackgroundTransparency = 1
-    title.Text = "AUTO MOVE V10"
+    title.Text = "AUTO MOVE V12"
     title.TextColor3 = Color3.fromRGB(220, 220, 220)
     title.TextSize = 14
     title.Font = Enum.Font.GothamMedium
@@ -151,6 +151,39 @@ function getNearestMonster()
     return nearest
 end
 
+-- Fonction pour calculer un chemin avec plusieurs tentatives
+local function safeComputePath(startPos, endPos)
+    for i = 1, 3 do -- tente 3 fois max
+        local path = PathfindingService:CreatePath({
+            AgentRadius = 1.2,      -- encore plus petit pour plus de tolérance
+            AgentHeight = 7,        -- plus grand pour "voir" par-dessus les obstacles
+            AgentCanJump = true,
+            AgentCanClimb = true,
+            WaypointSpacing = 0.5,  -- encore plus précis
+            Costs = { 
+                Water = 1,
+                Lava = 1,
+                Grass = 1,
+                Sand = 1,
+                Rock = 1,
+                Snow = 1
+            },
+        })
+        
+        local success, result = pcall(function()
+            return path:ComputeAsync(startPos, endPos)
+        end)
+        
+        if success and path.Status == Enum.PathStatus.Success then
+            return path
+        end
+        
+        print(("⚠️ Tentative %d/3 échouée (Status: %s), retry..."):format(i, tostring(path.Status)))
+        task.wait(0.1)
+    end
+    return nil
+end
+
 function moveTowardTarget()
     local char = player.Character or player.CharacterAdded:Wait()
     local humanoid = char:WaitForChild("Humanoid")
@@ -158,18 +191,11 @@ function moveTowardTarget()
 
     -- Fonction interne pour suivre un chemin complet
     local function followPath(targetPos)
-        local path = PathfindingService:CreatePath({
-            AgentRadius = 25,
-            AgentHeight = 50,
-            AgentCanJump = true,
-            AgentCanClimb = false,
-        })
+        local path = safeComputePath(root.Position, targetPos)
 
-        path:ComputeAsync(root.Position, targetPos)
-
-        if path.Status == Enum.PathStatus.Success then
+        if path then
             local waypoints = path:GetWaypoints()
-            print("✅ Chemin trouvé avec", #waypoints, "points")
+            print(("✅ Chemin trouvé avec %d points"):format(#waypoints))
 
             for _, wp in ipairs(waypoints) do
                 if not isMoving then return end
@@ -189,7 +215,8 @@ function moveTowardTarget()
             end
         else
             print("❌ Aucun chemin possible, déplacement direct")
-            humanoid:Move((targetPos - root.Position).Unit, false)
+            local direction = (targetPos - root.Position).Unit
+            humanoid:MoveTo(root.Position + (direction * 5))
         end
     end
 
@@ -271,4 +298,4 @@ end)
 
 moveTowardTarget()
 
-print("Auto Move V10 chargé! Avec PathfindingService pour éviter les murs")
+print("Auto Move V12 chargé! Pathfinding ultra-tolérant avec gestion d'erreur robuste")
