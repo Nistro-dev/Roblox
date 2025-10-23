@@ -676,27 +676,14 @@ function testMoveToMonster()
                 end
             end)
             
-            logPath("[DEBUG] 4/5 - Après définition callback MoveToFinished")
-            logPath("[MOVE] 🚀 Démarrage du pathfinding...")
+            print("[DEBUG] 4/5 - Après définition callback MoveToFinished")
+            print("[MOVE] 🚀 Démarrage du pathfinding...")
+            print("[DEBUG] 5/5 - AVANT appel moveToNextWaypoint()")
             
-            -- Sécurité: Capturer les erreurs
-            local success, err = pcall(function()
-                logPath("[DEBUG] 5/5 - Dans pcall, avant moveToNextWaypoint()")
-                moveToNextWaypoint()
-                logPath("[DEBUG] 6/5 - Après moveToNextWaypoint()")
-            end)
+            -- TEST SANS PCALL pour voir l'erreur réelle
+            moveToNextWaypoint()
             
-            if not success then
-                isPathfinding = false
-                logPath("[MOVE] ❌ ERREUR CRITIQUE: " .. tostring(err))
-                game:GetService("StarterGui"):SetCore("SendNotification", {
-                    Title = "Erreur Pathfinding";
-                    Text = "Erreur! Check F9";
-                    Duration = 3;
-                })
-            else
-                logPath("[DEBUG] ✅ moveToNextWaypoint() appelé sans erreur")
-            end
+            print("[DEBUG] 6/5 - APRÈS appel moveToNextWaypoint()")
             
             task.delay(30, function()
                 if reachedConnection then reachedConnection:Disconnect() end
