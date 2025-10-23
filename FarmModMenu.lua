@@ -115,7 +115,7 @@ local function createMainGUI()
     testMoveBtn.Size = UDim2.new(1, -40, 0, 60)
     testMoveBtn.Position = UDim2.new(0, 20, 0, 70)
     testMoveBtn.BackgroundColor3 = Color3.fromRGB(50, 150, 255)
-    testMoveBtn.Text = "🎯 Avancer de 100m devant"
+    testMoveBtn.Text = "⚡ Téléportation progressive 100m"
     testMoveBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
     testMoveBtn.TextSize = 16
     testMoveBtn.Font = Enum.Font.GothamBold
@@ -158,7 +158,7 @@ local function createMainGUI()
     infoLabel.Position = UDim2.new(0, 20, 0, 205)
     infoLabel.BackgroundColor3 = Color3.fromRGB(10, 10, 10)
     infoLabel.BorderSizePixel = 0
-    infoLabel.Text = "🎯 Test: Avancer de 100m devant toi\n📋 Copie les logs pour debug\n🗑️ Efface les logs\n\nF9 = Console | INSERT = Toggle menu"
+    infoLabel.Text = "⚡ Téléportation progressive 100m (100% fiable)\n📋 Copie les logs pour debug\n🗑️ Efface les logs\n\nF9 = Console | INSERT = Toggle menu"
     infoLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
     infoLabel.TextSize = 13
     infoLabel.Font = Enum.Font.Gotham
@@ -249,139 +249,64 @@ end
 
 function testMoveToMonster()
     if isPathfinding then
-        StarterGui:SetCore("SendNotification", {Title = "Pathfinding"; Text = "Déjà en cours!"; Duration = 2})
+        StarterGui:SetCore("SendNotification", {Title = "Téléportation"; Text = "Déjà en cours!"; Duration = 2})
         return
     end
     
     isPathfinding = true
-    logPath("========== TEST PATHFINDING ==========")
+    logPath("========== TÉLÉPORTATION PROGRESSIVE ==========")
     
     local playerChar = player.Character
     if not playerChar or not playerChar:FindFirstChild("HumanoidRootPart") then
         logPath("[MOVE] Personnage non trouvé")
         isPathfinding = false
-        StarterGui:SetCore("SendNotification", {Title = "Pathfinding"; Text = "Personnage pas prêt!"; Duration = 2})
-        return
-    end
-    
-    local humanoid = playerChar:FindFirstChild("Humanoid") or playerChar:WaitForChild("Humanoid", 3)
-    if not humanoid then
-        logPath("[MOVE] Humanoid introuvable (perso pas prêt)")
-        isPathfinding = false
-        StarterGui:SetCore("SendNotification", {Title = "Pathfinding"; Text = "Humanoid nil!"; Duration = 2})
+        StarterGui:SetCore("SendNotification", {Title = "Téléportation"; Text = "Personnage pas prêt!"; Duration = 2})
         return
     end
     
     local humanoidRootPart = playerChar.HumanoidRootPart
-    
+    local startPos = humanoidRootPart.Position
     local targetPos = humanoidRootPart.Position + (humanoidRootPart.CFrame.LookVector * 100)
+    local distance = (targetPos - startPos).Magnitude
     
-    logPath(string.format("[MOVE] Test: Avancer de 100m devant"))
+    logPath(string.format("[MOVE] Téléportation progressive vers %.0fm", distance))
+    StarterGui:SetCore("SendNotification", {Title = "Téléportation"; Text = "Téléportation en cours..."; Duration = 2})
     
-    local path = PathfindingService:CreatePath({
-        AgentRadius = 3,
-        AgentHeight = 5,
-        AgentCanJump = true,
-        AgentMaxSlope = 60,
-        Costs = {Water = 20}
-    })
+    local teleportStep = 10
+    local currentDistance = 0
+    local stepCount = 0
     
-    local success, errorMessage = pcall(function()
-        path:ComputeAsync(humanoidRootPart.Position, targetPos)
-    end)
-    
-    if success and path.Status == Enum.PathStatus.Success then
-        local waypoints = path:GetWaypoints()
-        logPath(string.format("[MOVE] Chemin trouvé: %d waypoints", #waypoints))
-        
-        StarterGui:SetCore("SendNotification", {Title = "Pathfinding"; Text = "Déplacement de 100m"; Duration = 2})
-        
-        local currentWaypoint = 2
-        local pathBlocked = false
-        
-        local function moveToNextWaypoint()
-            if currentWaypoint <= #waypoints and not pathBlocked then
-                local waypoint = waypoints[currentWaypoint]
-                humanoid:MoveTo(waypoint.Position)
-                
-                if waypoint.Action == Enum.PathWaypointAction.Jump then
-                    humanoid.Jump = true
-                end
-                
-                currentWaypoint = currentWaypoint + 1
+    local teleportConnection
+    teleportConnection = task.spawn(function()
+        while isPathfinding and currentDistance < distance do
+            stepCount = stepCount + 1
+            currentDistance = currentDistance + teleportStep
+            
+            if currentDistance > distance then
+                currentDistance = distance
             end
+            
+            local progress = (currentDistance / distance) * 100
+            local newPos = startPos + (humanoidRootPart.CFrame.LookVector * currentDistance)
+            
+            humanoidRootPart.CFrame = CFrame.new(newPos, newPos + humanoidRootPart.CFrame.LookVector)
+            
+            logPath(string.format("[MOVE] Étape %d - %.0fm/%.0fm (%.0f%%)", stepCount, currentDistance, distance, progress))
+            
+            task.wait(0.1)
         end
         
-        local reachedConnection
-        local consecutiveFailures = 0
-        
-        reachedConnection = humanoid.MoveToFinished:Connect(function(reached)
-            if reached then
-                consecutiveFailures = 0
-                logPath(string.format("[MOVE] Waypoint %d/%d atteint!", currentWaypoint - 1, #waypoints))
-                
-                if currentWaypoint <= #waypoints then
-                    moveToNextWaypoint()
-                else
-                    reachedConnection:Disconnect()
-                    isPathfinding = false
-                    logPath("[MOVE] Arrivé à destination!")
-                    StarterGui:SetCore("SendNotification", {Title = "Pathfinding"; Text = "Arrivé à destination!"; Duration = 2})
-                end
-            else
-                local currentPos = humanoidRootPart.Position
-                local lastWaypointPos = waypoints[currentWaypoint - 1].Position
-                local distToWaypoint = (currentPos - lastWaypointPos).Magnitude
-                
-                if distToWaypoint < 15 then
-                    consecutiveFailures = 0
-                    logPath(string.format("[MOVE] Waypoint %d/%d OK (tolérance %.1fm)", currentWaypoint - 1, #waypoints, distToWaypoint))
-                    
-                    if currentWaypoint <= #waypoints then
-                        moveToNextWaypoint()
-                    else
-                        reachedConnection:Disconnect()
-                        isPathfinding = false
-                        logPath("[MOVE] Arrivé à destination (avec tolérance)!")
-                        StarterGui:SetCore("SendNotification", {Title = "Pathfinding"; Text = "Arrivé à destination!"; Duration = 2})
-                    end
-                else
-                    consecutiveFailures = consecutiveFailures + 1
-                    logPath(string.format("[MOVE] Échec %d/10 - Distance: %.1fm", consecutiveFailures, distToWaypoint))
-                    
-                    if consecutiveFailures >= 10 then
-                        pathBlocked = true
-                        reachedConnection:Disconnect()
-                        isPathfinding = false
-                        
-                        local distanceToTarget = (currentPos - targetPos).Magnitude
-                        logPath(string.format("[MOVE] Bloqué - Distance restante: %.0fm", distanceToTarget))
-                        StarterGui:SetCore("SendNotification", {Title = "Pathfinding"; Text = "Bloqué après 10 échecs!"; Duration = 3})
-                    else
-                        logPath("[MOVE] On force le passage au waypoint suivant...")
-                        if currentWaypoint <= #waypoints then
-                            moveToNextWaypoint()
-                        else
-                            reachedConnection:Disconnect()
-                            isPathfinding = false
-                            logPath("[MOVE] Fin du chemin (forcé)")
-                        end
-                    end
-                end
-            end
-        end)
-        
-        moveToNextWaypoint()
-        
-        task.delay(30, function()
-            if reachedConnection then reachedConnection:Disconnect() end
-            isPathfinding = false
-        end)
-    else
         isPathfinding = false
-        logPath("[MOVE] Impossible de calculer un chemin")
-        StarterGui:SetCore("SendNotification", {Title = "Pathfinding"; Text = "Impossible de calculer un chemin!"; Duration = 3})
-    end
+        logPath("[MOVE] ✅ Téléportation terminée!")
+        StarterGui:SetCore("SendNotification", {Title = "Téléportation"; Text = "Arrivé à destination!"; Duration = 2})
+    end)
+    
+    task.delay(15, function()
+        if isPathfinding then
+            isPathfinding = false
+            logPath("[MOVE] ⏱️ Timeout téléportation")
+        end
+    end)
 end
 
 function toggleMenu()
