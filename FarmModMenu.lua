@@ -166,78 +166,63 @@ local function createMainGUI()
     layout.Padding = UDim.new(0, 10)
     layout.Parent = contentContainer
     
-    -- Section Info
-    local infoSection = createSection("📊 Informations", contentContainer)
-    infoSection.LayoutOrder = 1
+    -- Section Debug Entités
+    local debugSection = createSection("🔍 Debug Entités", contentContainer)
+    debugSection.LayoutOrder = 1
+    debugSection.Size = UDim2.new(1, -20, 0, 280)
     
-    local infoText = Instance.new("TextLabel")
-    infoText.Size = UDim2.new(1, -20, 0, 60)
-    infoText.Position = UDim2.new(0, 10, 0, 40)
-    infoText.BackgroundTransparency = 1
-    infoText.Text = "Appuyez sur INSERT pour ouvrir/fermer ce menu\n\nUtilisez les boutons ci-dessous pour activer les fonctionnalités"
-    infoText.TextColor3 = Color3.fromRGB(200, 200, 200)
-    infoText.TextSize = 14
-    infoText.Font = Enum.Font.Gotham
-    infoText.TextWrapped = true
-    infoText.TextXAlignment = Enum.TextXAlignment.Left
-    infoText.TextYAlignment = Enum.TextYAlignment.Top
-    infoText.Parent = infoSection
+    -- Bouton de scan
+    local scanButton = Instance.new("TextButton")
+    scanButton.Name = "ScanButton"
+    scanButton.Size = UDim2.new(1, -20, 0, 40)
+    scanButton.Position = UDim2.new(0, 10, 0, 40)
+    scanButton.BackgroundColor3 = Color3.fromRGB(100, 150, 255)
+    scanButton.BorderSizePixel = 0
+    scanButton.Text = "🔎 Scanner toutes les entités"
+    scanButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+    scanButton.TextSize = 15
+    scanButton.Font = Enum.Font.GothamBold
+    scanButton.Parent = debugSection
     
-    -- Section Auto Farm (pour plus tard)
-    local farmSection = createSection("🌾 Auto Farm", contentContainer)
-    farmSection.LayoutOrder = 2
+    local scanCorner = Instance.new("UICorner")
+    scanCorner.CornerRadius = UDim.new(0, 8)
+    scanCorner.Parent = scanButton
     
-    local farmInfo = Instance.new("TextLabel")
-    farmInfo.Size = UDim2.new(1, -20, 0, 40)
-    farmInfo.Position = UDim2.new(0, 10, 0, 40)
-    farmInfo.BackgroundTransparency = 1
-    farmInfo.Text = "Les fonctionnalités d'auto farm seront ajoutées ici"
-    farmInfo.TextColor3 = Color3.fromRGB(150, 150, 150)
-    farmInfo.TextSize = 13
-    farmInfo.Font = Enum.Font.Gotham
-    farmInfo.TextWrapped = true
-    farmInfo.TextXAlignment = Enum.TextXAlignment.Left
-    farmInfo.Parent = farmSection
+    -- Zone d'affichage du debug
+    local debugOutput = Instance.new("TextLabel")
+    debugOutput.Name = "DebugOutput"
+    debugOutput.Size = UDim2.new(1, -20, 0, 200)
+    debugOutput.Position = UDim2.new(0, 10, 0, 90)
+    debugOutput.BackgroundColor3 = Color3.fromRGB(10, 10, 10)
+    debugOutput.BorderSizePixel = 0
+    debugOutput.Text = "Clique sur 'Scanner' pour voir toutes les entités\n(joueurs et monstres)"
+    debugOutput.TextColor3 = Color3.fromRGB(200, 200, 200)
+    debugOutput.TextSize = 11
+    debugOutput.Font = Enum.Font.Code
+    debugOutput.TextWrapped = true
+    debugOutput.TextXAlignment = Enum.TextXAlignment.Left
+    debugOutput.TextYAlignment = Enum.TextYAlignment.Top
+    debugOutput.Parent = debugSection
     
-    -- Section Téléportation (pour plus tard)
-    local tpSection = createSection("📍 Téléportation", contentContainer)
-    tpSection.LayoutOrder = 3
+    local debugCorner = Instance.new("UICorner")
+    debugCorner.CornerRadius = UDim.new(0, 6)
+    debugCorner.Parent = debugOutput
     
-    local tpInfo = Instance.new("TextLabel")
-    tpInfo.Size = UDim2.new(1, -20, 0, 40)
-    tpInfo.Position = UDim2.new(0, 10, 0, 40)
-    tpInfo.BackgroundTransparency = 1
-    tpInfo.Text = "Les options de téléportation seront ajoutées ici"
-    tpInfo.TextColor3 = Color3.fromRGB(150, 150, 150)
-    tpInfo.TextSize = 13
-    tpInfo.Font = Enum.Font.Gotham
-    tpInfo.TextWrapped = true
-    tpInfo.TextXAlignment = Enum.TextXAlignment.Left
-    tpInfo.Parent = tpSection
+    -- Événement du bouton scan
+    scanButton.MouseButton1Click:Connect(function()
+        debugScanEntities(debugOutput)
+    end)
     
     -- Section ESP Ennemis
     local espSection = createSection("👾 ESP Ennemis", contentContainer)
-    espSection.LayoutOrder = 4
-    espSection.Size = UDim2.new(1, -20, 0, 130)
-    
-    -- Description
-    local espDesc = Instance.new("TextLabel")
-    espDesc.Size = UDim2.new(1, -20, 0, 35)
-    espDesc.Position = UDim2.new(0, 10, 0, 40)
-    espDesc.BackgroundTransparency = 1
-    espDesc.Text = "Encadré rouge sur les monstres (pas les joueurs) - Optimisé pour les performances"
-    espDesc.TextColor3 = Color3.fromRGB(180, 180, 180)
-    espDesc.TextSize = 12
-    espDesc.Font = Enum.Font.Gotham
-    espDesc.TextWrapped = true
-    espDesc.TextXAlignment = Enum.TextXAlignment.Left
-    espDesc.Parent = espSection
+    espSection.LayoutOrder = 2
+    espSection.Size = UDim2.new(1, -20, 0, 90)
     
     -- Bouton toggle ESP
     espToggleButton = Instance.new("TextButton")
     espToggleButton.Name = "ESPToggle"
     espToggleButton.Size = UDim2.new(1, -20, 0, 40)
-    espToggleButton.Position = UDim2.new(0, 10, 0, 80)
+    espToggleButton.Position = UDim2.new(0, 10, 0, 40)
     espToggleButton.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
     espToggleButton.BorderSizePixel = 0
     espToggleButton.Text = "🔴 ESP: OFF"
@@ -376,6 +361,131 @@ function clearAllESP()
         end
     end
     print("[ESP] Tous les ESP supprimés")
+end
+
+-- Fonction pour scanner et débugger toutes les entités
+function debugScanEntities(outputLabel)
+    print("========== DEBUG SCAN ==========")
+    outputLabel.Text = "🔍 Scan en cours..."
+    outputLabel.TextColor3 = Color3.fromRGB(255, 255, 100)
+    task.wait(0.1)
+    
+    local playerChar = player.Character
+    if not playerChar or not playerChar:FindFirstChild("HumanoidRootPart") then
+        outputLabel.Text = "❌ Erreur: Personnage non trouvé"
+        outputLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
+        return
+    end
+    
+    local playerPos = playerChar.HumanoidRootPart.Position
+    local allEntities = {}
+    local scanRange = 150 -- Distance de scan
+    
+    -- Scanner TOUT le Workspace
+    for _, obj in pairs(game.Workspace:GetDescendants()) do
+        if obj:IsA("Humanoid") and obj.Parent then
+            local model = obj.Parent
+            local rootPart = model:FindFirstChild("HumanoidRootPart")
+            
+            if rootPart then
+                local distance = (rootPart.Position - playerPos).Magnitude
+                
+                if distance <= scanRange and model ~= playerChar then
+                    -- Déterminer le type
+                    local entityType = "INCONNU"
+                    local isPlayerChar = Players:GetPlayerFromCharacter(model)
+                    
+                    if isPlayerChar then
+                        entityType = "👤 JOUEUR"
+                    else
+                        -- Vérifier si le nom correspond à un joueur
+                        local nameMatchPlayer = false
+                        for _, plr in pairs(Players:GetPlayers()) do
+                            if model.Name == plr.Name or model.Name == plr.DisplayName then
+                                nameMatchPlayer = true
+                                break
+                            end
+                        end
+                        
+                        if nameMatchPlayer then
+                            entityType = "👤 JOUEUR (nom)"
+                        else
+                            entityType = "👾 MONSTRE"
+                        end
+                    end
+                    
+                    -- Trouver le parent/dossier
+                    local parentInfo = "Workspace"
+                    if model.Parent and model.Parent ~= game.Workspace then
+                        parentInfo = model.Parent.Name
+                    end
+                    
+                    table.insert(allEntities, {
+                        name = model.Name,
+                        type = entityType,
+                        distance = math.floor(distance),
+                        health = math.floor(obj.Health),
+                        maxHealth = math.floor(obj.MaxHealth),
+                        parent = parentInfo,
+                        model = model
+                    })
+                end
+            end
+        end
+    end
+    
+    -- Trier par distance
+    table.sort(allEntities, function(a, b) return a.distance < b.distance end)
+    
+    -- Afficher les résultats
+    if #allEntities == 0 then
+        outputLabel.Text = "❌ Aucune entité trouvée dans " .. scanRange .. " studs"
+        outputLabel.TextColor3 = Color3.fromRGB(255, 150, 50)
+        print("[DEBUG] Aucune entité trouvée")
+    else
+        local displayText = "✓ " .. #allEntities .. " entité(s) trouvée(s):\n\n"
+        
+        for i, entity in ipairs(allEntities) do
+            if i <= 10 then -- Afficher max 10
+                displayText = displayText .. string.format(
+                    "%s %s\n  📏 %dm | 💚 %d/%d\n  📁 %s\n\n",
+                    entity.type,
+                    entity.name,
+                    entity.distance,
+                    entity.health,
+                    entity.maxHealth,
+                    entity.parent
+                )
+                
+                -- Aussi dans la console pour plus de détails
+                print(string.format(
+                    "[DEBUG] %s | Nom: %s | Distance: %dm | HP: %d/%d | Dossier: %s",
+                    entity.type,
+                    entity.name,
+                    entity.distance,
+                    entity.health,
+                    entity.maxHealth,
+                    entity.parent
+                ))
+            end
+        end
+        
+        if #allEntities > 10 then
+            displayText = displayText .. "... et " .. (#allEntities - 10) .. " autre(s)"
+        end
+        
+        outputLabel.Text = displayText
+        outputLabel.TextColor3 = Color3.fromRGB(100, 255, 100)
+        
+        print("[DEBUG] Total: " .. #allEntities .. " entités scannées")
+        print("========== FIN DU SCAN ==========")
+    end
+    
+    game:GetService("StarterGui"):SetCore("SendNotification", {
+        Title = "Debug Scan";
+        Text = #allEntities .. " entité(s) trouvée(s)";
+        Duration = 3;
+    })
 end
 
 -- Fonction pour vérifier si un modèle est un joueur
