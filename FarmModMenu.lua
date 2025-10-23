@@ -33,10 +33,11 @@ local menuVisible = false
 local screenGui = nil
 local mainFrame = nil
 local savedPosition = nil
+local pathfindingLogs = {} -- Stockage des logs
 
 -- Configuration
 local TOGGLE_KEY = Enum.KeyCode.Insert
-local MENU_SIZE = UDim2.new(0, 450, 0, 360)
+local MENU_SIZE = UDim2.new(0, 450, 0, 470)
 local ANIMATION_TIME = 0.3
 local ENEMY_FOLDERS = {"Enemies", "NPCs", "Monsters", "Mobs", "Dungeon", "DungeonMobs", "Boss", "Bosses", "IzvDf"}
 local detectedFolders = {}
@@ -143,13 +144,43 @@ local function createMainGUI()
     uninjectCorner.CornerRadius = UDim.new(0, 8)
     uninjectCorner.Parent = uninjectBtn
     
+    -- Bouton Copier Logs
+    local copyLogsBtn = Instance.new("TextButton")
+    copyLogsBtn.Size = UDim2.new(0.48, -15, 0, 45)
+    copyLogsBtn.Position = UDim2.new(0, 20, 0, 210)
+    copyLogsBtn.BackgroundColor3 = Color3.fromRGB(50, 200, 100)
+    copyLogsBtn.Text = "📋 Copier logs"
+    copyLogsBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    copyLogsBtn.TextSize = 13
+    copyLogsBtn.Font = Enum.Font.GothamBold
+    copyLogsBtn.Parent = mainFrame
+    
+    local copyLogsCorner = Instance.new("UICorner")
+    copyLogsCorner.CornerRadius = UDim.new(0, 8)
+    copyLogsCorner.Parent = copyLogsBtn
+    
+    -- Bouton Effacer Logs
+    local clearLogsBtn = Instance.new("TextButton")
+    clearLogsBtn.Size = UDim2.new(0.48, -15, 0, 45)
+    clearLogsBtn.Position = UDim2.new(0.52, 10, 0, 210)
+    clearLogsBtn.BackgroundColor3 = Color3.fromRGB(150, 150, 150)
+    clearLogsBtn.Text = "🗑️ Effacer logs"
+    clearLogsBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    clearLogsBtn.TextSize = 13
+    clearLogsBtn.Font = Enum.Font.GothamBold
+    clearLogsBtn.Parent = mainFrame
+    
+    local clearLogsCorner = Instance.new("UICorner")
+    clearLogsCorner.CornerRadius = UDim.new(0, 8)
+    clearLogsCorner.Parent = clearLogsBtn
+    
     -- Info label
     local infoLabel = Instance.new("TextLabel")
-    infoLabel.Size = UDim2.new(1, -40, 0, 120)
-    infoLabel.Position = UDim2.new(0, 20, 0, 210)
+    infoLabel.Size = UDim2.new(1, -40, 0, 150)
+    infoLabel.Position = UDim2.new(0, 20, 0, 270)
     infoLabel.BackgroundColor3 = Color3.fromRGB(10, 10, 10)
     infoLabel.BorderSizePixel = 0
-    infoLabel.Text = "Utilise le pathfinding pour aller vers le monstre le plus proche.\n\nOuvre F9 pour voir les détails du déplacement.\n\nINSERT pour toggle le menu."
+    infoLabel.Text = "🎯 Pathfinding vers le monstre le plus proche\n📋 Copie les logs pour me les envoyer\n🗑️ Efface les logs avant un nouveau test\n\nF9 = Console | INSERT = Toggle menu"
     infoLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
     infoLabel.TextSize = 13
     infoLabel.Font = Enum.Font.Gotham
@@ -175,12 +206,69 @@ local function createMainGUI()
         uninjectScript()
     end)
     
+    copyLogsBtn.MouseButton1Click:Connect(function()
+        copyLogsToClipboard()
+    end)
+    
+    clearLogsBtn.MouseButton1Click:Connect(function()
+        clearLogs()
+    end)
+    
     -- Rendre le menu déplaçable
     makeDraggable(mainFrame, titleBar)
     
     print("[MOD MENU] Interface créée avec succès!")
     
     return screenGui
+end
+
+-- Fonction pour logger avec stockage
+local function logPath(message)
+    print(message)
+    table.insert(pathfindingLogs, message)
+end
+
+-- Fonction pour copier les logs dans le presse-papier
+function copyLogsToClipboard()
+    if #pathfindingLogs == 0 then
+        game:GetService("StarterGui"):SetCore("SendNotification", {
+            Title = "Logs";
+            Text = "Aucun log à copier!";
+            Duration = 2;
+        })
+        return
+    end
+    
+    local logsText = table.concat(pathfindingLogs, "\n")
+    
+    -- Vérifier si setclipboard existe (supporté par la plupart des executors)
+    if setclipboard then
+        setclipboard(logsText)
+        game:GetService("StarterGui"):SetCore("SendNotification", {
+            Title = "Logs";
+            Text = string.format("%d lignes copiées!", #pathfindingLogs);
+            Duration = 3;
+        })
+        print("[LOGS] ✓ " .. #pathfindingLogs .. " lignes copiées dans le presse-papier!")
+    else
+        game:GetService("StarterGui"):SetCore("SendNotification", {
+            Title = "Erreur";
+            Text = "setclipboard non supporté par ton executor";
+            Duration = 3;
+        })
+        print("[LOGS] ❌ setclipboard() n'est pas disponible")
+    end
+end
+
+-- Fonction pour réinitialiser les logs
+function clearLogs()
+    pathfindingLogs = {}
+    print("[LOGS] ✓ Logs effacés")
+    game:GetService("StarterGui"):SetCore("SendNotification", {
+        Title = "Logs";
+        Text = "Logs effacés!";
+        Duration = 2;
+    })
 end
 
 -- Fonction pour désinjecter proprement le script
@@ -314,7 +402,7 @@ end
 
 -- Fonction pour tester le déplacement vers un monstre
 function testMoveToMonster()
-    print("========== TEST PATHFINDING ==========")
+    logPath("========== TEST PATHFINDING ==========")
     
     local monster, distance = findNearestMonster()
     if not monster then
@@ -328,15 +416,15 @@ function testMoveToMonster()
     
     local playerChar = player.Character
     if not playerChar or not playerChar:FindFirstChild("HumanoidRootPart") then
-        print("[MOVE] Personnage non trouvé")
+        logPath("[MOVE] Personnage non trouvé")
         return
     end
     
     local humanoidRootPart = playerChar.HumanoidRootPart
     local targetPos = monster.HumanoidRootPart.Position
     
-    print(string.format("[MOVE] Cible: %s (%dm)", monster.Name, math.floor(distance)))
-    print("[MOVE] Calcul du chemin...")
+    logPath(string.format("[MOVE] Cible: %s (%dm)", monster.Name, math.floor(distance)))
+    logPath("[MOVE] Calcul du chemin...")
     
     local PathfindingService = game:GetService("PathfindingService")
     local humanoid = playerChar:FindFirstChild("Humanoid")
@@ -357,17 +445,17 @@ function testMoveToMonster()
         if success and path.Status == Enum.PathStatus.Success then
             local waypoints = path:GetWaypoints()
             
-            print("")
-            print("╔═══════════════════════════════════════╗")
-            print("║      ✅ CHEMIN TROUVÉ - DÉPART ✅      ║")
-            print("╚═══════════════════════════════════════╝")
-            print(string.format("[MOVE] 🎯 Cible: %s", monster.Name))
-            print(string.format("[MOVE] 📏 Distance totale: %.1fm", distance))
-            print(string.format("[MOVE] 🗺️ Nombre de waypoints: %d", #waypoints))
-            print(string.format("[MOVE] 📍 Position départ: (%.1f, %.1f, %.1f)", humanoidRootPart.Position.X, humanoidRootPart.Position.Y, humanoidRootPart.Position.Z))
-            print(string.format("[MOVE] 🎯 Position arrivée: (%.1f, %.1f, %.1f)", targetPos.X, targetPos.Y, targetPos.Z))
-            print("═══════════════════════════════════════")
-            print("")
+            logPath("")
+            logPath("╔═══════════════════════════════════════╗")
+            logPath("║      ✅ CHEMIN TROUVÉ - DÉPART ✅      ║")
+            logPath("╚═══════════════════════════════════════╝")
+            logPath(string.format("[MOVE] 🎯 Cible: %s", monster.Name))
+            logPath(string.format("[MOVE] 📏 Distance totale: %.1fm", distance))
+            logPath(string.format("[MOVE] 🗺️ Nombre de waypoints: %d", #waypoints))
+            logPath(string.format("[MOVE] 📍 Position départ: (%.1f, %.1f, %.1f)", humanoidRootPart.Position.X, humanoidRootPart.Position.Y, humanoidRootPart.Position.Z))
+            logPath(string.format("[MOVE] 🎯 Position arrivée: (%.1f, %.1f, %.1f)", targetPos.X, targetPos.Y, targetPos.Z))
+            logPath("═══════════════════════════════════════")
+            logPath("")
             
             game:GetService("StarterGui"):SetCore("SendNotification", {
                 Title = "Pathfinding";
@@ -437,6 +525,7 @@ function testMoveToMonster()
             end
             
             local reachedConnection
+            local consecutiveFailures = 0
             
             reachedConnection = humanoid.MoveToFinished:Connect(function(reached)
                 print("")
@@ -446,7 +535,8 @@ function testMoveToMonster()
                 print(string.format("[MOVE] Waypoint complété: %d/%d", currentWaypoint - 1, #waypoints))
                 
                 if reached then
-                    print("[MOVE] Waypoint atteint!")
+                    print("[MOVE] ✅ Waypoint atteint parfaitement!")
+                    consecutiveFailures = 0
                     
                     if currentWaypoint <= #waypoints then
                         moveToNextWaypoint()
@@ -461,47 +551,82 @@ function testMoveToMonster()
                         })
                     end
                 else
-                    -- Analyse détaillée du blocage
+                    -- Vérifier si on est PROCHE du waypoint même si pas parfaitement atteint
                     local currentPos = humanoidRootPart.Position
-                    local distanceToTarget = (currentPos - targetPos).Magnitude
                     local lastWaypointPos = waypoints[currentWaypoint - 1].Position
-                    local distToLastWaypoint = (currentPos - lastWaypointPos).Magnitude
+                    local distToWaypoint = (currentPos - lastWaypointPos).Magnitude
                     
-                    print("")
-                    print("╔═══════════════════════════════════════╗")
-                    print("║        ⚠️ PATHFINDING BLOQUÉ ⚠️       ║")
-                    print("╚═══════════════════════════════════════╝")
-                    print(string.format("[MOVE] 🛑 Bloqué au waypoint: %d/%d", currentWaypoint - 1, #waypoints))
-                    print(string.format("[MOVE] 📍 Position actuelle: (%.1f, %.1f, %.1f)", currentPos.X, currentPos.Y, currentPos.Z))
-                    print(string.format("[MOVE] 🎯 Position waypoint: (%.1f, %.1f, %.1f)", lastWaypointPos.X, lastWaypointPos.Y, lastWaypointPos.Z))
-                    print(string.format("[MOVE] 📏 Distance au waypoint: %.1fm", distToLastWaypoint))
-                    print(string.format("[MOVE] 🎯 Distance restante au monstre: %.1fm", distanceToTarget))
-                    print(string.format("[MOVE] 📊 Progression: %.1f%%", (1 - distanceToTarget / distance) * 100))
+                    print(string.format("[MOVE] 🔍 Vérification: Distance au waypoint = %.1fm", distToWaypoint))
                     
-                    -- Vérifier le sol sous les pieds
-                    local rayDown = Ray.new(currentPos, Vector3.new(0, -10, 0))
-                    local hitPart, hitPos = workspace:FindPartOnRay(rayDown, playerChar)
-                    if hitPart then
-                        local heightAboveGround = currentPos.Y - hitPos.Y
-                        print(string.format("[MOVE] 🌍 Sol détecté: %s (hauteur: %.1fm)", hitPart.Name, heightAboveGround))
+                    -- Si on est à moins de 5m du waypoint, on considère que c'est OK (terrain irrégulier)
+                    if distToWaypoint < 5 then
+                        print(string.format("[MOVE] ⚠️ Pas parfait mais assez proche (%.1fm) - ON CONTINUE!", distToWaypoint))
+                        consecutiveFailures = 0
+                        
+                        if currentWaypoint <= #waypoints then
+                            moveToNextWaypoint()
+                        else
+                            reachedConnection:Disconnect()
+                            print("[MOVE] === ARRIVÉ AU MONSTRE! ===")
+                            
+                            game:GetService("StarterGui"):SetCore("SendNotification", {
+                                Title = "Pathfinding";
+                                Text = "Arrivé devant " .. monster.Name;
+                                Duration = 2;
+                            })
+                        end
                     else
-                        print("[MOVE] ⚠️ AUCUN SOL DÉTECTÉ (dans le vide?)")
+                        -- Vraiment loin du waypoint, analyse détaillée du blocage
+                        consecutiveFailures = consecutiveFailures + 1
+                        print(string.format("[MOVE] ❌ Trop loin du waypoint! Échec %d/3", consecutiveFailures))
+                        
+                        if consecutiveFailures >= 3 then
+                            -- Vraiment bloqué après 3 échecs
+                            local distanceToTarget = (currentPos - targetPos).Magnitude
+                            
+                            print("")
+                            print("╔═══════════════════════════════════════╗")
+                            print("║        ⚠️ PATHFINDING BLOQUÉ ⚠️       ║")
+                            print("╚═══════════════════════════════════════╝")
+                            print(string.format("[MOVE] 🛑 Bloqué au waypoint: %d/%d", currentWaypoint - 1, #waypoints))
+                            print(string.format("[MOVE] 📍 Position actuelle: (%.1f, %.1f, %.1f)", currentPos.X, currentPos.Y, currentPos.Z))
+                            print(string.format("[MOVE] 🎯 Position waypoint: (%.1f, %.1f, %.1f)", lastWaypointPos.X, lastWaypointPos.Y, lastWaypointPos.Z))
+                            print(string.format("[MOVE] 📏 Distance au waypoint: %.1fm", distToWaypoint))
+                            print(string.format("[MOVE] 🎯 Distance restante au monstre: %.1fm", distanceToTarget))
+                            print(string.format("[MOVE] 📊 Progression: %.1f%%", (1 - distanceToTarget / distance) * 100))
+                            
+                            -- Vérifier le sol sous les pieds
+                            local rayDown = Ray.new(currentPos, Vector3.new(0, -10, 0))
+                            local hitPart, hitPos = workspace:FindPartOnRay(rayDown, playerChar)
+                            if hitPart then
+                                local heightAboveGround = currentPos.Y - hitPos.Y
+                                print(string.format("[MOVE] 🌍 Sol détecté: %s (hauteur: %.1fm)", hitPart.Name, heightAboveGround))
+                            else
+                                print("[MOVE] ⚠️ AUCUN SOL DÉTECTÉ (dans le vide?)")
+                            end
+                            
+                            -- État du personnage
+                            print(string.format("[MOVE] 🏃 Vitesse actuelle: %.1f", humanoid.WalkSpeed))
+                            print(string.format("[MOVE] 💚 Santé: %d/%d", humanoid.Health, humanoid.MaxHealth))
+                            print(string.format("[MOVE] 🎯 État: %s", humanoid:GetState().Name))
+                            print("═══════════════════════════════════════")
+                            
+                            pathBlocked = true
+                            reachedConnection:Disconnect()
+                            
+                            game:GetService("StarterGui"):SetCore("SendNotification", {
+                                Title = "Pathfinding";
+                                Text = string.format("Bloqué! %.1f%% parcouru", (1 - distanceToTarget / distance) * 100);
+                                Duration = 3;
+                            })
+                        else
+                            -- Réessayer le waypoint suivant
+                            print("[MOVE] 🔄 On essaie quand même le prochain waypoint...")
+                            if currentWaypoint <= #waypoints then
+                                moveToNextWaypoint()
+                            end
+                        end
                     end
-                    
-                    -- État du personnage
-                    print(string.format("[MOVE] 🏃 Vitesse actuelle: %.1f", humanoid.WalkSpeed))
-                    print(string.format("[MOVE] 💚 Santé: %d/%d", humanoid.Health, humanoid.MaxHealth))
-                    print(string.format("[MOVE] 🎯 État: %s", humanoid:GetState().Name))
-                    print("═══════════════════════════════════════")
-                    
-                    pathBlocked = true
-                    reachedConnection:Disconnect()
-                    
-                    game:GetService("StarterGui"):SetCore("SendNotification", {
-                        Title = "Pathfinding";
-                        Text = string.format("Bloqué! %.1f%% parcouru", (1 - distanceToTarget / distance) * 100);
-                        Duration = 3;
-                    })
                 end
             end)
             
