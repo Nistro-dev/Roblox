@@ -18,6 +18,9 @@ local mainFrame = nil
 local savedPosition = nil
 local pathfindingLogs = {}
 local isPathfinding = false
+local waypoints = {}
+local currentWaypoint = 1
+local targetPos = nil
 
 local TOGGLE_KEY = Enum.KeyCode.Insert
 local MENU_SIZE = UDim2.new(0, 450, 0, 350)
@@ -115,7 +118,7 @@ local function createMainGUI()
     testMoveBtn.Size = UDim2.new(1, -40, 0, 60)
     testMoveBtn.Position = UDim2.new(0, 20, 0, 70)
     testMoveBtn.BackgroundColor3 = Color3.fromRGB(50, 150, 255)
-    testMoveBtn.Text = "⚡ Téléportation progressive 100m"
+    testMoveBtn.Text = "🎯 Calculer chemin 100m (Z pour avancer)"
     testMoveBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
     testMoveBtn.TextSize = 16
     testMoveBtn.Font = Enum.Font.GothamBold
@@ -158,7 +161,7 @@ local function createMainGUI()
     infoLabel.Position = UDim2.new(0, 20, 0, 205)
     infoLabel.BackgroundColor3 = Color3.fromRGB(10, 10, 10)
     infoLabel.BorderSizePixel = 0
-    infoLabel.Text = "⚡ Téléportation progressive 100m (100% fiable)\n📋 Copie les logs pour debug\n🗑️ Efface les logs\n\nF9 = Console | INSERT = Toggle menu"
+    infoLabel.Text = "🎯 Calcul chemin 100m + Z pour avancer\n📋 Copie les logs pour debug\n🗑️ Efface les logs\n\nZ = Waypoint suivant | INSERT = Toggle menu"
     infoLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
     infoLabel.TextSize = 13
     infoLabel.Font = Enum.Font.Gotham
@@ -248,65 +251,85 @@ function findNearestMonster()
 end
 
 function testMoveToMonster()
-    if isPathfinding then
-        StarterGui:SetCore("SendNotification", {Title = "Téléportation"; Text = "Déjà en cours!"; Duration = 2})
-        return
-    end
-    
-    isPathfinding = true
-    logPath("========== TÉLÉPORTATION PROGRESSIVE ==========")
+    logPath("========== CALCUL CHEMIN ==========")
     
     local playerChar = player.Character
     if not playerChar or not playerChar:FindFirstChild("HumanoidRootPart") then
         logPath("[MOVE] Personnage non trouvé")
-        isPathfinding = false
-        StarterGui:SetCore("SendNotification", {Title = "Téléportation"; Text = "Personnage pas prêt!"; Duration = 2})
+        StarterGui:SetCore("SendNotification", {Title = "Chemin"; Text = "Personnage pas prêt!"; Duration = 2})
         return
     end
     
     local humanoidRootPart = playerChar.HumanoidRootPart
     local startPos = humanoidRootPart.Position
-    local targetPos = humanoidRootPart.Position + (humanoidRootPart.CFrame.LookVector * 100)
+    targetPos = humanoidRootPart.Position + (humanoidRootPart.CFrame.LookVector * 100)
     local distance = (targetPos - startPos).Magnitude
     
-    logPath(string.format("[MOVE] Téléportation progressive vers %.0fm", distance))
-    StarterGui:SetCore("SendNotification", {Title = "Téléportation"; Text = "Téléportation en cours..."; Duration = 2})
+    logPath(string.format("[MOVE] Calcul du chemin vers %.0fm", distance))
     
-    local teleportStep = 10
-    local currentDistance = 0
-    local stepCount = 0
+    local path = PathfindingService:CreatePath({
+        AgentRadius = 3,
+        AgentHeight = 5,
+        AgentCanJump = true,
+        AgentMaxSlope = 60,
+        Costs = {Water = 20}
+    })
     
-    local teleportConnection
-    teleportConnection = task.spawn(function()
-        while isPathfinding and currentDistance < distance do
-            stepCount = stepCount + 1
-            currentDistance = currentDistance + teleportStep
-            
-            if currentDistance > distance then
-                currentDistance = distance
-            end
-            
-            local progress = (currentDistance / distance) * 100
-            local newPos = startPos + (humanoidRootPart.CFrame.LookVector * currentDistance)
-            
-            humanoidRootPart.CFrame = CFrame.new(newPos, newPos + humanoidRootPart.CFrame.LookVector)
-            
-            logPath(string.format("[MOVE] Étape %d - %.0fm/%.0fm (%.0f%%)", stepCount, currentDistance, distance, progress))
-            
-            task.wait(0.1)
-        end
+    local success, errorMessage = pcall(function()
+        path:ComputeAsync(startPos, targetPos)
+    end)
+    
+    if success and path.Status == Enum.PathStatus.Success then
+        waypoints = path:GetWaypoints()
+        currentWaypoint = 2
+        isPathfinding = true
         
-        isPathfinding = false
-        logPath("[MOVE] ✅ Téléportation terminée!")
-        StarterGui:SetCore("SendNotification", {Title = "Téléportation"; Text = "Arrivé à destination!"; Duration = 2})
-    end)
+        logPath(string.format("[MOVE] ✅ Chemin calculé: %d waypoints", #waypoints))
+        logPath("[MOVE] Appuie sur Z pour avancer waypoint par waypoint")
+        StarterGui:SetCore("SendNotification", {Title = "Chemin"; Text = "Chemin prêt! Appuie sur Z"; Duration = 3})
+    else
+        logPath("[MOVE] ❌ Impossible de calculer un chemin")
+        StarterGui:SetCore("SendNotification", {Title = "Chemin"; Text = "Chemin impossible!"; Duration = 3})
+    end
+end
+
+function moveToNextWaypoint()
+    if not isPathfinding or currentWaypoint > #waypoints then
+        logPath("[MOVE] Pas de chemin actif ou fin du chemin")
+        return
+    end
     
-    task.delay(15, function()
-        if isPathfinding then
-            isPathfinding = false
-            logPath("[MOVE] ⏱️ Timeout téléportation")
-        end
-    end)
+    local playerChar = player.Character
+    if not playerChar or not playerChar:FindFirstChild("HumanoidRootPart") then
+        logPath("[MOVE] Personnage non trouvé")
+        return
+    end
+    
+    local humanoid = playerChar:FindFirstChild("Humanoid")
+    if not humanoid then
+        logPath("[MOVE] Humanoid non trouvé")
+        return
+    end
+    
+    local waypoint = waypoints[currentWaypoint]
+    local humanoidRootPart = playerChar.HumanoidRootPart
+    
+    logPath(string.format("[MOVE] Waypoint %d/%d - Distance: %.1fm", currentWaypoint, #waypoints, (waypoint.Position - humanoidRootPart.Position).Magnitude))
+    
+    humanoid:MoveTo(waypoint.Position)
+    
+    if waypoint.Action == Enum.PathWaypointAction.Jump then
+        humanoid.Jump = true
+        logPath("[MOVE] 🦘 Saut requis!")
+    end
+    
+    currentWaypoint = currentWaypoint + 1
+    
+    if currentWaypoint > #waypoints then
+        isPathfinding = false
+        logPath("[MOVE] ✅ Fin du chemin!")
+        StarterGui:SetCore("SendNotification", {Title = "Chemin"; Text = "Arrivé à destination!"; Duration = 2})
+    end
 end
 
 function toggleMenu()
@@ -336,8 +359,12 @@ end)
 createMainGUI()
 
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
-    if not gameProcessed and input.KeyCode == TOGGLE_KEY then
-        toggleMenu()
+    if not gameProcessed then
+        if input.KeyCode == TOGGLE_KEY then
+            toggleMenu()
+        elseif input.KeyCode == Enum.KeyCode.Z then
+            moveToNextWaypoint()
+        end
     end
 end)
 
