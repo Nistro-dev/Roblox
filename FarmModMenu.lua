@@ -367,9 +367,45 @@ function testMoveToMonster()
             isPathfinding = false
         end)
     else
-        isPathfinding = false
-        logPath("[MOVE] ❌ Impossible de calculer un chemin")
-        StarterGui:SetCore("SendNotification", {Title = "Déplacement"; Text = "Chemin impossible!"; Duration = 3})
+        logPath("[MOVE] ❌ Pathfinding échoué - Essai mouvement direct...")
+        
+        local humanoidRootPart = playerChar.HumanoidRootPart
+        local startPos = humanoidRootPart.Position
+        local directTarget = startPos + (humanoidRootPart.CFrame.LookVector * 100)
+        
+        logPath("[MOVE] 🎯 Mouvement direct vers la cible")
+        StarterGui:SetCore("SendNotification", {Title = "Déplacement"; Text = "Mouvement direct..."; Duration = 2})
+        
+        humanoid:MoveTo(directTarget)
+        
+        local directConnection
+        local startTime = tick()
+        
+        directConnection = humanoid.MoveToFinished:Connect(function(reached)
+            local elapsed = tick() - startTime
+            local currentPos = humanoidRootPart.Position
+            local distanceToTarget = (currentPos - directTarget).Magnitude
+            
+            if reached then
+                isPathfinding = false
+                logPath("[MOVE] ✅ Arrivé à destination (mouvement direct)!")
+                StarterGui:SetCore("SendNotification", {Title = "Déplacement"; Text = "Arrivé à destination!"; Duration = 2})
+            else
+                if elapsed > 15 or distanceToTarget < 5 then
+                    isPathfinding = false
+                    logPath(string.format("[MOVE] ✅ Arrivé proche (%.1fm restant)", distanceToTarget))
+                    StarterGui:SetCore("SendNotification", {Title = "Déplacement"; Text = "Arrivé proche!"; Duration = 2})
+                else
+                    logPath(string.format("[MOVE] En cours... Distance: %.1fm", distanceToTarget))
+                    humanoid:MoveTo(directTarget)
+                end
+            end
+        end)
+        
+        task.delay(20, function()
+            if directConnection then directConnection:Disconnect() end
+            isPathfinding = false
+        end)
     end
 end
 
