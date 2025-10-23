@@ -115,7 +115,7 @@ local function createMainGUI()
     testMoveBtn.Size = UDim2.new(1, -40, 0, 60)
     testMoveBtn.Position = UDim2.new(0, 20, 0, 70)
     testMoveBtn.BackgroundColor3 = Color3.fromRGB(50, 150, 255)
-    testMoveBtn.Text = "🎯 Aller au monstre le plus proche"
+    testMoveBtn.Text = "🎯 Avancer de 100m devant"
     testMoveBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
     testMoveBtn.TextSize = 16
     testMoveBtn.Font = Enum.Font.GothamBold
@@ -158,7 +158,7 @@ local function createMainGUI()
     infoLabel.Position = UDim2.new(0, 20, 0, 205)
     infoLabel.BackgroundColor3 = Color3.fromRGB(10, 10, 10)
     infoLabel.BorderSizePixel = 0
-    infoLabel.Text = "🎯 Pathfinding vers le monstre le plus proche\n📋 Copie les logs\n🗑️ Efface les logs\n\nF9 = Console | INSERT = Toggle menu"
+    infoLabel.Text = "🎯 Test: Avancer de 100m devant toi\n📋 Copie les logs pour debug\n🗑️ Efface les logs\n\nF9 = Console | INSERT = Toggle menu"
     infoLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
     infoLabel.TextSize = 13
     infoLabel.Font = Enum.Font.Gotham
@@ -256,29 +256,27 @@ function testMoveToMonster()
     isPathfinding = true
     logPath("========== TEST PATHFINDING ==========")
     
-    local monster, distance = findNearestMonster()
-    if not monster then
+    local playerChar = player.Character
+    if not playerChar or not playerChar:FindFirstChild("HumanoidRootPart") then
+        logPath("[MOVE] Personnage non trouvé")
         isPathfinding = false
-        StarterGui:SetCore("SendNotification", {Title = "Pathfinding"; Text = "Aucun monstre trouvé!"; Duration = 3})
+        StarterGui:SetCore("SendNotification", {Title = "Pathfinding"; Text = "Personnage pas prêt!"; Duration = 2})
         return
     end
     
-    local playerChar = player.Character
-    if not playerChar or not playerChar:FindFirstChild("HumanoidRootPart") then
+    local humanoid = playerChar:FindFirstChild("Humanoid") or playerChar:WaitForChild("Humanoid", 3)
+    if not humanoid then
+        logPath("[MOVE] Humanoid introuvable (perso pas prêt)")
         isPathfinding = false
+        StarterGui:SetCore("SendNotification", {Title = "Pathfinding"; Text = "Humanoid nil!"; Duration = 2})
         return
     end
     
     local humanoidRootPart = playerChar.HumanoidRootPart
-    local targetPos = monster.HumanoidRootPart.Position
-    local humanoid = playerChar:FindFirstChild("Humanoid")
     
-    if not humanoid then
-        isPathfinding = false
-        return
-    end
+    local targetPos = humanoidRootPart.Position + (humanoidRootPart.CFrame.LookVector * 100)
     
-    logPath(string.format("[MOVE] Cible: %s (%.0fm)", monster.Name, distance))
+    logPath(string.format("[MOVE] Test: Avancer de 100m devant"))
     
     local path = PathfindingService:CreatePath({
         AgentRadius = 2,
@@ -296,7 +294,7 @@ function testMoveToMonster()
         local waypoints = path:GetWaypoints()
         logPath(string.format("[MOVE] Chemin trouvé: %d waypoints", #waypoints))
         
-        StarterGui:SetCore("SendNotification", {Title = "Pathfinding"; Text = "Déplacement vers " .. monster.Name; Duration = 2})
+        StarterGui:SetCore("SendNotification", {Title = "Pathfinding"; Text = "Déplacement de 100m"; Duration = 2})
         
         local currentWaypoint = 2
         local pathBlocked = false
@@ -326,8 +324,8 @@ function testMoveToMonster()
                 else
                     reachedConnection:Disconnect()
                     isPathfinding = false
-                    logPath("[MOVE] Arrivé au monstre!")
-                    StarterGui:SetCore("SendNotification", {Title = "Pathfinding"; Text = "Arrivé devant " .. monster.Name; Duration = 2})
+                    logPath("[MOVE] Arrivé à destination!")
+                    StarterGui:SetCore("SendNotification", {Title = "Pathfinding"; Text = "Arrivé à destination!"; Duration = 2})
                 end
             else
                 local currentPos = humanoidRootPart.Position
@@ -342,8 +340,8 @@ function testMoveToMonster()
                     else
                         reachedConnection:Disconnect()
                         isPathfinding = false
-                        logPath("[MOVE] Arrivé au monstre (avec tolérance)!")
-                        StarterGui:SetCore("SendNotification", {Title = "Pathfinding"; Text = "Arrivé devant " .. monster.Name; Duration = 2})
+                        logPath("[MOVE] Arrivé à destination (avec tolérance)!")
+                        StarterGui:SetCore("SendNotification", {Title = "Pathfinding"; Text = "Arrivé à destination!"; Duration = 2})
                     end
                 else
                     consecutiveFailures = consecutiveFailures + 1
@@ -393,6 +391,14 @@ function toggleMenu()
         closeTween.Completed:Connect(function() mainFrame.Visible = false end)
     end
 end
+
+player.CharacterAdded:Connect(function(newCharacter)
+    character = newCharacter
+    if isPathfinding then
+        isPathfinding = false
+        logPath("[SYSTEM] Respawn détecté - Pathfinding annulé")
+    end
+end)
 
 createMainGUI()
 
