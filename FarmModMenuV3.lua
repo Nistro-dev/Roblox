@@ -24,8 +24,13 @@ end
 function copyLogsToClipboard()
     if pathfindingLogs and #pathfindingLogs > 0 then
         local logsText = table.concat(pathfindingLogs, "\n")
-        setclipboard(logsText)
-        StarterGui:SetCore("SendNotification", {Title = "Logs"; Text = "Logs copiés!"; Duration = 2})
+        pcall(function()
+            setclipboard(logsText)
+        end)
+        StarterGui:SetCore("SendNotification", {Title = "Logs"; Text = "Logs copiés dans le clipboard!"; Duration = 3})
+        print("=== LOGS COPIÉS ===")
+        print(logsText)
+        print("==================")
     else
         StarterGui:SetCore("SendNotification", {Title = "Logs"; Text = "Aucun log!"; Duration = 2})
     end
@@ -143,7 +148,10 @@ function goToMonster()
             logPath("[MOVE] 🦘 Saut!")
         end
         
-        task.wait(0.3)
+        humanoid.WalkSpeed = 16
+        humanoid.JumpPower = 50
+        
+        task.wait(1)
         moveToMonster()
     end
     
