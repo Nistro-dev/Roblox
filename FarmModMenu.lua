@@ -495,10 +495,15 @@ function testMoveToMonster()
             local pathBlocked = false
             
             local function moveToNextWaypoint()
+                print("[DEBUG] moveToNextWaypoint() APPELÉE - currentWaypoint: " .. currentWaypoint .. " / " .. #waypoints .. " - pathBlocked: " .. tostring(pathBlocked))
+                
                 if currentWaypoint <= #waypoints and not pathBlocked then
+                    print("[DEBUG] Condition OK, on entre dans le if")
                     local waypoint = waypoints[currentWaypoint]
                     local playerPos = humanoidRootPart.Position
                     local waypointPos = waypoint.Position
+                    
+                    print("[DEBUG] Waypoint récupéré, calcul des distances...")
                     
                     -- Calcul des distances
                     local distToWaypoint = (waypointPos - playerPos).Magnitude
@@ -549,7 +554,13 @@ function testMoveToMonster()
                     end
                     
                     currentWaypoint = currentWaypoint + 1
+                    print("[DEBUG] currentWaypoint incrémenté à: " .. currentWaypoint)
+                else
+                    print("[DEBUG] ❌ Condition FAUSSE - ne rentre PAS dans le if")
+                    print("[DEBUG] currentWaypoint: " .. currentWaypoint .. " <= " .. #waypoints .. " ?")
+                    print("[DEBUG] pathBlocked: " .. tostring(pathBlocked))
                 end
+                print("[DEBUG] Fin de moveToNextWaypoint()")
             end
             
             local reachedConnection
