@@ -22,9 +22,13 @@ function logPath(message)
 end
 
 function copyLogsToClipboard()
-    local logsText = table.concat(pathfindingLogs, "\n")
-    setclipboard(logsText)
-    StarterGui:SetCore("SendNotification", {Title = "Logs"; Text = "Logs copiés!"; Duration = 2})
+    if pathfindingLogs and #pathfindingLogs > 0 then
+        local logsText = table.concat(pathfindingLogs, "\n")
+        setclipboard(logsText)
+        StarterGui:SetCore("SendNotification", {Title = "Logs"; Text = "Logs copiés!"; Duration = 2})
+    else
+        StarterGui:SetCore("SendNotification", {Title = "Logs"; Text = "Aucun log!"; Duration = 2})
+    end
 end
 
 function clearLogs()
@@ -132,6 +136,7 @@ function goToMonster()
         logPath(string.format("[MOVE] 🚀 Direction: %.1f, %.1f, %.1f", direction.X, direction.Y, direction.Z))
         
         humanoid:MoveTo(monsterPos)
+        logPath(string.format("[MOVE] 🚶 Déplacement vers %s", nearestMonster.Name))
         
         if direction.Y > 0.3 then
             humanoid.Jump = true
