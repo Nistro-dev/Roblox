@@ -46,6 +46,11 @@ local autoFarmEnabled = false -- Auto farm activé ou non
 local autoFarmConnection = nil -- Connection pour l'auto farm
 local currentTarget = nil -- Monstre ciblé actuellement
 
+-- Système d'enregistrement des actions
+local isRecording = false
+local recordedActions = {}
+local actionLogLabel = nil
+
 -- Configuration
 local TOGGLE_KEY = Enum.KeyCode.Insert -- Touche pour ouvrir/fermer le menu
 local MENU_SIZE = UDim2.new(0, 450, 0, 500)
@@ -147,9 +152,52 @@ local function createMainGUI()
     layout.Padding = UDim.new(0, 10)
     layout.Parent = contentContainer
     
+    -- Section Enregistrement Actions
+    local recordSection = createSection("🎬 Enregistrement Sélection Donjon", contentContainer)
+    recordSection.LayoutOrder = 1
+    recordSection.Size = UDim2.new(1, -20, 0, 300)
+    
+    -- Bouton Start/Stop Recording
+    local recordBtn = Instance.new("TextButton")
+    recordBtn.Size = UDim2.new(1, -20, 0, 45)
+    recordBtn.Position = UDim2.new(0, 10, 0, 45)
+    recordBtn.BackgroundColor3 = Color3.fromRGB(255, 50, 50)
+    recordBtn.Text = "🔴 Démarrer l'enregistrement"
+    recordBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    recordBtn.TextSize = 14
+    recordBtn.Font = Enum.Font.GothamBold
+    recordBtn.Parent = recordSection
+    local rc1 = Instance.new("UICorner")
+    rc1.CornerRadius = UDim.new(0, 8)
+    rc1.Parent = recordBtn
+    
+    -- Zone d'affichage des actions
+    actionLogLabel = Instance.new("TextLabel")
+    actionLogLabel.Name = "ActionLog"
+    actionLogLabel.Size = UDim2.new(1, -20, 0, 210)
+    actionLogLabel.Position = UDim2.new(0, 10, 0, 100)
+    actionLogLabel.BackgroundColor3 = Color3.fromRGB(10, 10, 10)
+    actionLogLabel.BorderSizePixel = 0
+    actionLogLabel.Text = "Clique sur 'Démarrer' puis sélectionne:\n1. Le donjon\n2. La difficulté\n3. Le gamemode\n4. Valide\n\nToutes tes actions seront enregistrées!"
+    actionLogLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+    actionLogLabel.TextSize = 11
+    actionLogLabel.Font = Enum.Font.Code
+    actionLogLabel.TextWrapped = true
+    actionLogLabel.TextXAlignment = Enum.TextXAlignment.Left
+    actionLogLabel.TextYAlignment = Enum.TextYAlignment.Top
+    actionLogLabel.Parent = recordSection
+    local rc2 = Instance.new("UICorner")
+    rc2.CornerRadius = UDim.new(0, 6)
+    rc2.Parent = actionLogLabel
+    
+    -- Événement du bouton
+    recordBtn.MouseButton1Click:Connect(function()
+        toggleRecording(recordBtn)
+    end)
+    
     -- Section Debug Entités
     local debugSection = createSection("🔍 Debug Entités", contentContainer)
-    debugSection.LayoutOrder = 1
+    debugSection.LayoutOrder = 2
     debugSection.Size = UDim2.new(1, -20, 0, 280)
     
     -- Bouton de scan
@@ -196,7 +244,7 @@ local function createMainGUI()
     
     -- Section Déplacement Auto
     local moveSection = createSection("🎯 Pathfinding vers Monstre", contentContainer)
-    moveSection.LayoutOrder = 2
+    moveSection.LayoutOrder = 3
     moveSection.Size = UDim2.new(1, -20, 0, 100)
     
     -- Bouton Test déplacement
@@ -624,6 +672,187 @@ function testMoveToMonster()
     
     print("========== FIN TEST ==========")
 end
+
+-- Fonction pour logger une action
+function logAction(actionType, details)
+    local timestamp = os.date("%H:%M:%S")
+    local action = {
+        time = timestamp,
+        type = actionType,
+        details = details
+    }
+    
+    table.insert(recordedActions, action)
+    
+    -- Log dans la console
+    print(string.format("[ACTION] [%s] %s: %s", timestamp, actionType, details))
+    
+    -- Mettre à jour l'affichage
+    if actionLogLabel then
+        local displayText = string.format("✅ Enregistrement actif (%d actions)\n\n", #recordedActions)
+        
+        local start = math.max(1, #recordedActions - 8)
+        for i = start, #recordedActions do
+            local act = recordedActions[i]
+            displayText = displayText .. string.format("[%s] %s\n", act.time, act.details)
+        end
+        
+        actionLogLabel.Text = displayText
+        actionLogLabel.TextColor3 = Color3.fromRGB(100, 255, 100)
+    end
+end
+
+-- Fonction pour démarrer/arrêter l'enregistrement
+function toggleRecording(button)
+    isRecording = not isRecording
+    
+    if isRecording then
+        button.Text = "⏹️ Arrêter l'enregistrement"
+        button.BackgroundColor3 = Color3.fromRGB(50, 255, 50)
+        recordedActions = {}
+        
+        print("========== ENREGISTREMENT DÉMARRÉ ==========")
+        print("[RECORD] Toutes les interactions vont être enregistrées")
+        print("[RECORD] Clique sur les boutons du jeu pour sélectionner le donjon")
+        
+        actionLogLabel.Text = "🔴 ENREGISTREMENT EN COURS...\n\nEn attente d'actions..."
+        actionLogLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
+        
+        -- Démarrer le tracking des clics
+        startClickTracking()
+        
+        game:GetService("StarterGui"):SetCore("SendNotification", {
+            Title = "Enregistrement";
+            Text = "Démarré! Sélectionne ton donjon";
+            Duration = 3;
+        })
+    else
+        button.Text = "🔴 Démarrer l'enregistrement"
+        button.BackgroundColor3 = Color3.fromRGB(255, 50, 50)
+        
+        print("========== ENREGISTREMENT ARRÊTÉ ==========")
+        print(string.format("[RECORD] Total d'actions enregistrées: %d", #recordedActions))
+        
+        -- Afficher le récapitulatif
+        print("[RECORD] === RÉCAPITULATIF ===")
+        for i, action in ipairs(recordedActions) do
+            print(string.format("[RECORD] %d. [%s] %s", i, action.time, action.details))
+        end
+        print("[RECORD] ======================")
+        
+        if actionLogLabel then
+            local displayText = string.format("⏹️ Enregistrement terminé\n%d actions enregistrées\n\n", #recordedActions)
+            for i, act in ipairs(recordedActions) do
+                if i <= 10 then
+                    displayText = displayText .. string.format("%d. %s\n", i, act.details)
+                end
+            end
+            actionLogLabel.Text = displayText
+            actionLogLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+        end
+        
+        -- Arrêter le tracking
+        stopClickTracking()
+        
+        game:GetService("StarterGui"):SetCore("SendNotification", {
+            Title = "Enregistrement";
+            Text = #recordedActions .. " actions sauvegardées";
+            Duration = 3;
+        })
+    end
+end
+
+-- Variables pour le tracking
+local clickConnection = nil
+local guiChangedConnection = nil
+
+-- Fonction pour tracker tous les clics
+function startClickTracking()
+    print("[TRACKER] Démarrage du tracking des clics...")
+    
+    -- Tracker les clics de souris
+    clickConnection = UserInputService.InputBegan:Connect(function(input, gameProcessed)
+        if not isRecording then return end
+        
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            -- Essayer de trouver sur quoi l'utilisateur a cliqué
+            local mouse = player:GetMouse()
+            local target = mouse.Target
+            
+            if target then
+                local gui = target:FindFirstAncestorOfClass("ScreenGui") or target:FindFirstAncestorOfClass("SurfaceGui")
+                
+                if gui and gui.Parent ~= player.PlayerGui then
+                    -- C'est probablement un GUI du jeu
+                    local guiName = gui.Name
+                    local targetName = target.Name
+                    
+                    -- Chercher un TextButton ou TextLabel parent
+                    local button = target:FindFirstAncestorWhichIsA("TextButton") or target:FindFirstAncestorWhichIsA("ImageButton")
+                    
+                    if button then
+                        local buttonText = button:FindFirstChild("TextLabel") and button.TextLabel.Text or button.Text or "Bouton sans texte"
+                        logAction("CLIC BOUTON", string.format("GUI: %s | Bouton: %s | Texte: %s", guiName, button.Name, buttonText))
+                    else
+                        logAction("CLIC GUI", string.format("GUI: %s | Objet: %s", guiName, targetName))
+                    end
+                end
+            end
+        end
+    end)
+    
+    -- Tracker les changements de GUI (nouveau menu qui apparaît)
+    task.spawn(function()
+        while isRecording and _G.FARM_MOD_MENU_ACTIVE do
+            for _, gui in pairs(player.PlayerGui:GetChildren()) do
+                if gui:IsA("ScreenGui") and gui.Name ~= "FarmModMenuGUI" then
+                    -- Nouveau GUI détecté
+                    local guiName = gui.Name
+                    
+                    -- Chercher des boutons importants
+                    for _, descendant in pairs(gui:GetDescendants()) do
+                        if descendant:IsA("TextButton") or descendant:IsA("TextLabel") then
+                            local text = descendant.Text
+                            if text and text ~= "" then
+                                print(string.format("[TRACKER] 📋 GUI actif: %s | Élément: %s (Texte: %s)", guiName, descendant.Name, text))
+                            end
+                        end
+                    end
+                end
+            end
+            task.wait(1)
+        end
+    end)
+    
+    print("[TRACKER] ✓ Tracking actif")
+end
+
+-- Fonction pour arrêter le tracking
+function stopClickTracking()
+    if clickConnection then
+        clickConnection:Disconnect()
+        clickConnection = nil
+    end
+    
+    print("[TRACKER] Tracking arrêté")
+end
+
+-- Gérer la téléportation (le script survit)
+player.CharacterAdded:Connect(function(newChar)
+    character = newChar
+    print("[SYSTEM] 🔄 Nouveau personnage détecté (téléportation?)")
+    print("[SYSTEM] ℹ️ Le mod menu reste actif!")
+    
+    if isRecording then
+        logAction("TÉLÉPORTATION", "Nouveau personnage chargé - probablement téléporté dans le donjon")
+        
+        game:GetService("StarterGui"):SetCore("SendNotification", {
+            Title = "Téléportation détectée";
+            Text = "Script toujours actif!";
+            Duration = 3;
+        })
+    end
+end)
 
 -- Fonction pour afficher/cacher le menu avec animation
 function toggleMenu()
