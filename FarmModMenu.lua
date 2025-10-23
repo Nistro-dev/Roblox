@@ -20,11 +20,16 @@ print("[MOD MENU] Joueur détecté!")
 local menuVisible = false
 local screenGui = nil
 local mainFrame = nil
+local savedPosition = nil -- Pour sauvegarder la position du menu
+local enemiesList = {} -- Liste des ennemis détectés
+local enemiesListUI = nil -- UI pour afficher les ennemis
+local enemyConnection = nil -- Connection pour la détection continue
 
 -- Configuration
 local TOGGLE_KEY = Enum.KeyCode.Insert -- Touche pour ouvrir/fermer le menu
 local MENU_SIZE = UDim2.new(0, 450, 0, 500)
 local ANIMATION_TIME = 0.3
+local ENEMY_DETECTION_RANGE = 100 -- Distance de détection des ennemis
 
 -- Fonction pour créer le GUI principal
 local function createMainGUI()
@@ -48,7 +53,8 @@ local function createMainGUI()
     mainFrame = Instance.new("Frame")
     mainFrame.Name = "MainFrame"
     mainFrame.Size = MENU_SIZE
-    mainFrame.Position = UDim2.new(0.5, -225, 0.5, -250)
+    -- Utiliser la position sauvegardée ou la position par défaut
+    mainFrame.Position = savedPosition or UDim2.new(0.5, -225, 0.5, -250)
     mainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
     mainFrame.BorderSizePixel = 0
     mainFrame.Visible = false -- Caché par défaut
@@ -175,6 +181,53 @@ local function createMainGUI()
     tpInfo.TextXAlignment = Enum.TextXAlignment.Left
     tpInfo.Parent = tpSection
     
+    -- Section Détection Ennemis
+    local enemySection = createSection("👾 Détection Ennemis", contentContainer)
+    enemySection.LayoutOrder = 4
+    enemySection.Size = UDim2.new(1, -20, 0, 200)
+    
+    -- Bouton pour activer/désactiver la détection
+    local detectButton = Instance.new("TextButton")
+    detectButton.Name = "DetectButton"
+    detectButton.Size = UDim2.new(1, -20, 0, 35)
+    detectButton.Position = UDim2.new(0, 10, 0, 40)
+    detectButton.BackgroundColor3 = Color3.fromRGB(50, 200, 50)
+    detectButton.BorderSizePixel = 0
+    detectButton.Text = "🔍 Détecter les Ennemis"
+    detectButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+    detectButton.TextSize = 14
+    detectButton.Font = Enum.Font.GothamBold
+    detectButton.Parent = enemySection
+    
+    local detectCorner = Instance.new("UICorner")
+    detectCorner.CornerRadius = UDim.new(0, 8)
+    detectCorner.Parent = detectButton
+    
+    -- Zone de texte pour afficher les ennemis
+    enemiesListUI = Instance.new("TextLabel")
+    enemiesListUI.Name = "EnemiesList"
+    enemiesListUI.Size = UDim2.new(1, -20, 0, 110)
+    enemiesListUI.Position = UDim2.new(0, 10, 0, 85)
+    enemiesListUI.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+    enemiesListUI.BorderSizePixel = 0
+    enemiesListUI.Text = "Cliquez sur 'Détecter' pour scanner les ennemis"
+    enemiesListUI.TextColor3 = Color3.fromRGB(150, 150, 150)
+    enemiesListUI.TextSize = 12
+    enemiesListUI.Font = Enum.Font.Code
+    enemiesListUI.TextWrapped = true
+    enemiesListUI.TextXAlignment = Enum.TextXAlignment.Left
+    enemiesListUI.TextYAlignment = Enum.TextYAlignment.Top
+    enemiesListUI.Parent = enemySection
+    
+    local enemiesCorner = Instance.new("UICorner")
+    enemiesCorner.CornerRadius = UDim.new(0, 6)
+    enemiesCorner.Parent = enemiesListUI
+    
+    -- Événement du bouton de détection
+    detectButton.MouseButton1Click:Connect(function()
+        detectEnemies()
+    end)
+    
     -- Mise à jour de la taille du canvas
     contentContainer.CanvasSize = UDim2.new(0, 0, 0, layout.AbsoluteContentSize.Y + 10)
     layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
@@ -235,6 +288,9 @@ function makeDraggable(frame, dragHandle)
             input.Changed:Connect(function()
                 if input.UserInputState == Enum.UserInputState.End then
                     dragging = false
+                    -- Sauvegarder la position quand on arrête de déplacer
+                    savedPosition = frame.Position
+                    print("[MOD MENU] Position sauvegardée:", savedPosition)
                 end
             end)
         end
@@ -259,13 +315,132 @@ function makeDraggable(frame, dragHandle)
     end)
 end
 
+-- Fonction pour détecter les ennemis
+function detectEnemies()
+    enemiesList = {} -- Réinitialiser la liste
+    
+    -- Récupérer le personnage du joueur
+    local playerChar = player.Character
+    if not playerChar or not playerChar:FindFirstChild("HumanoidRootPart") then
+        enemiesListUI.Text = "❌ Impossible de détecter (personnage non trouvé)"
+        enemiesListUI.TextColor3 = Color3.fromRGB(255, 100, 100)
+        return
+    end
+    
+    local playerPos = playerChar.HumanoidRootPart.Position
+    
+    print("[MOD MENU] Recherche d'ennemis...")
+    
+    -- Méthode 1: Chercher dans le workspace tous les modèles avec un Humanoid
+    for _, obj in pairs(game.Workspace:GetDescendants()) do
+        if obj:IsA("Humanoid") and obj.Parent then
+            local enemyModel = obj.Parent
+            
+            -- Vérifier que ce n'est pas le joueur lui-même
+            if enemyModel ~= playerChar then
+                -- Vérifier si c'est un personnage (a un HumanoidRootPart)
+                local rootPart = enemyModel:FindFirstChild("HumanoidRootPart")
+                if rootPart then
+                    local distance = (rootPart.Position - playerPos).Magnitude
+                    
+                    -- Vérifier si dans la portée
+                    if distance <= ENEMY_DETECTION_RANGE then
+                        table.insert(enemiesList, {
+                            name = enemyModel.Name,
+                            distance = math.floor(distance),
+                            health = obj.Health,
+                            maxHealth = obj.MaxHealth,
+                            model = enemyModel,
+                            humanoid = obj
+                        })
+                    end
+                end
+            end
+        end
+    end
+    
+    -- Méthode 2: Chercher dans les dossiers communs d'ennemis
+    local commonEnemyFolders = {"Enemies", "NPCs", "Monsters", "Mobs", "Characters"}
+    for _, folderName in pairs(commonEnemyFolders) do
+        local folder = game.Workspace:FindFirstChild(folderName)
+        if folder then
+            for _, enemy in pairs(folder:GetChildren()) do
+                if enemy:IsA("Model") and enemy:FindFirstChild("Humanoid") and enemy:FindFirstChild("HumanoidRootPart") then
+                    local distance = (enemy.HumanoidRootPart.Position - playerPos).Magnitude
+                    
+                    if distance <= ENEMY_DETECTION_RANGE then
+                        -- Vérifier si pas déjà dans la liste
+                        local alreadyAdded = false
+                        for _, existing in pairs(enemiesList) do
+                            if existing.model == enemy then
+                                alreadyAdded = true
+                                break
+                            end
+                        end
+                        
+                        if not alreadyAdded then
+                            table.insert(enemiesList, {
+                                name = enemy.Name,
+                                distance = math.floor(distance),
+                                health = enemy.Humanoid.Health,
+                                maxHealth = enemy.Humanoid.MaxHealth,
+                                model = enemy,
+                                humanoid = enemy.Humanoid
+                            })
+                        end
+                    end
+                end
+            end
+        end
+    end
+    
+    -- Afficher les résultats
+    if #enemiesList == 0 then
+        enemiesListUI.Text = "❌ Aucun ennemi trouvé dans un rayon de " .. ENEMY_DETECTION_RANGE .. " studs"
+        enemiesListUI.TextColor3 = Color3.fromRGB(255, 150, 50)
+        print("[MOD MENU] Aucun ennemi détecté")
+    else
+        -- Trier par distance
+        table.sort(enemiesList, function(a, b) return a.distance < b.distance end)
+        
+        local displayText = "✓ " .. #enemiesList .. " ennemi(s) détecté(s):\n\n"
+        for i, enemy in ipairs(enemiesList) do
+            if i <= 5 then -- Afficher maximum 5 ennemis
+                displayText = displayText .. string.format(
+                    "%d. %s\n   💚 HP: %d/%d | 📏 %dm\n",
+                    i,
+                    enemy.name,
+                    math.floor(enemy.health),
+                    math.floor(enemy.maxHealth),
+                    enemy.distance
+                )
+            end
+        end
+        
+        if #enemiesList > 5 then
+            displayText = displayText .. "\n... et " .. (#enemiesList - 5) .. " autre(s)"
+        end
+        
+        enemiesListUI.Text = displayText
+        enemiesListUI.TextColor3 = Color3.fromRGB(100, 255, 100)
+        print("[MOD MENU] " .. #enemiesList .. " ennemi(s) détecté(s)")
+    end
+    
+    game:GetService("StarterGui"):SetCore("SendNotification", {
+        Title = "Détection Ennemis";
+        Text = #enemiesList .. " ennemi(s) trouvé(s)";
+        Duration = 3;
+    })
+end
+
 -- Fonction pour afficher/cacher le menu avec animation
 function toggleMenu()
     menuVisible = not menuVisible
     
     if menuVisible then
         mainFrame.Visible = true
-        mainFrame.Position = UDim2.new(0.5, -225, 0.5, -250)
+        -- Utiliser la position sauvegardée ou la position par défaut
+        mainFrame.Position = savedPosition or UDim2.new(0.5, -225, 0.5, -250)
         mainFrame.Size = UDim2.new(0, 0, 0, 0)
         
         -- Animation d'ouverture
