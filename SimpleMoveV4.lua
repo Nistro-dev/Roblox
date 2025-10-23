@@ -6,6 +6,8 @@ local player = Players.LocalPlayer
 local isMoving = false
 local screenGui = nil
 local mainFrame = nil
+local toggleBtn = nil
+local statusLabel = nil
 
 local TOGGLE_KEY = Enum.KeyCode.Insert
 
@@ -34,7 +36,7 @@ function createGUI()
     title.Font = Enum.Font.GothamBold
     title.Parent = mainFrame
     
-    local toggleBtn = Instance.new("TextButton")
+    toggleBtn = Instance.new("TextButton")
     toggleBtn.Size = UDim2.new(1, -20, 0, 40)
     toggleBtn.Position = UDim2.new(0, 10, 0, 40)
     toggleBtn.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
@@ -44,7 +46,7 @@ function createGUI()
     toggleBtn.Font = Enum.Font.GothamBold
     toggleBtn.Parent = mainFrame
     
-    local statusLabel = Instance.new("TextLabel")
+    statusLabel = Instance.new("TextLabel")
     statusLabel.Size = UDim2.new(1, -20, 0, 20)
     statusLabel.Position = UDim2.new(0, 10, 0, 85)
     statusLabel.BackgroundTransparency = 1
