@@ -381,7 +381,7 @@ function updateESP()
             local enemyModel = obj.Parent
             
             -- Vérifier que ce n'est pas le joueur lui-même et pas un autre joueur
-            if enemyModel ~= playerChar and not game.Players:GetPlayerFromCharacter(enemyModel) then
+            if enemyModel ~= playerChar and not Players:GetPlayerFromCharacter(enemyModel) then
                 -- Vérifier si c'est un personnage (a un HumanoidRootPart)
                 if enemyModel:FindFirstChild("HumanoidRootPart") then
                     createESP(enemyModel)
