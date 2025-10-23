@@ -16,31 +16,49 @@ repeat task.wait() until character
 
 print("[MOD MENU] Joueur détecté!")
 
+-- ===== NETTOYAGE DE L'ANCIENNE VERSION =====
+-- Supprimer l'ancien GUI
+local oldGui = player.PlayerGui:FindFirstChild("FarmModMenuGUI")
+if oldGui then
+    oldGui:Destroy()
+    print("[MOD MENU] Ancien GUI supprimé")
+end
+
+-- Supprimer tous les anciens ESP
+for _, obj in pairs(game.Workspace:GetDescendants()) do
+    if obj.Name == "EnemyESP" then
+        obj:Destroy()
+    end
+end
+
+-- Supprimer le dossier ESP s'il existe
+local oldESPFolder = game.CoreGui:FindFirstChild("EnemyESPFolder")
+if oldESPFolder then
+    oldESPFolder:Destroy()
+    print("[MOD MENU] Anciens ESP supprimés")
+end
+
+print("[MOD MENU] Nettoyage terminé!")
+
 -- Variables globales
 local menuVisible = false
 local screenGui = nil
 local mainFrame = nil
 local savedPosition = nil -- Pour sauvegarder la position du menu
-local enemiesList = {} -- Liste des ennemis détectés
-local enemiesListUI = nil -- UI pour afficher les ennemis
-local enemyConnection = nil -- Connection pour la détection continue
+local espEnabled = false -- ESP activé ou non
+local espConnection = nil -- Connection pour l'ESP continu
+local espFolder = nil -- Dossier pour stocker les ESP
+local espToggleButton = nil -- Référence au bouton toggle
 
 -- Configuration
 local TOGGLE_KEY = Enum.KeyCode.Insert -- Touche pour ouvrir/fermer le menu
 local MENU_SIZE = UDim2.new(0, 450, 0, 500)
 local ANIMATION_TIME = 0.3
-local ENEMY_DETECTION_RANGE = 100 -- Distance de détection des ennemis
+local ESP_UPDATE_INTERVAL = 0.5 -- Mettre à jour l'ESP toutes les 0.5 secondes
 
 -- Fonction pour créer le GUI principal
 local function createMainGUI()
     print("[MOD MENU] Création de l'interface...")
-    
-    -- Supprimer l'ancien GUI s'il existe
-    local oldGui = player.PlayerGui:FindFirstChild("FarmModMenuGUI")
-    if oldGui then
-        oldGui:Destroy()
-        print("[MOD MENU] Ancien GUI supprimé")
-    end
     
     -- ScreenGui principal
     screenGui = Instance.new("ScreenGui")
@@ -181,51 +199,44 @@ local function createMainGUI()
     tpInfo.TextXAlignment = Enum.TextXAlignment.Left
     tpInfo.Parent = tpSection
     
-    -- Section Détection Ennemis
-    local enemySection = createSection("👾 Détection Ennemis", contentContainer)
-    enemySection.LayoutOrder = 4
-    enemySection.Size = UDim2.new(1, -20, 0, 200)
+    -- Section ESP Ennemis
+    local espSection = createSection("👾 ESP Ennemis", contentContainer)
+    espSection.LayoutOrder = 4
+    espSection.Size = UDim2.new(1, -20, 0, 130)
     
-    -- Bouton pour activer/désactiver la détection
-    local detectButton = Instance.new("TextButton")
-    detectButton.Name = "DetectButton"
-    detectButton.Size = UDim2.new(1, -20, 0, 35)
-    detectButton.Position = UDim2.new(0, 10, 0, 40)
-    detectButton.BackgroundColor3 = Color3.fromRGB(50, 200, 50)
-    detectButton.BorderSizePixel = 0
-    detectButton.Text = "🔍 Détecter les Ennemis"
-    detectButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-    detectButton.TextSize = 14
-    detectButton.Font = Enum.Font.GothamBold
-    detectButton.Parent = enemySection
+    -- Description
+    local espDesc = Instance.new("TextLabel")
+    espDesc.Size = UDim2.new(1, -20, 0, 35)
+    espDesc.Position = UDim2.new(0, 10, 0, 40)
+    espDesc.BackgroundTransparency = 1
+    espDesc.Text = "Active un encadré rouge autour de tous les ennemis du donjon"
+    espDesc.TextColor3 = Color3.fromRGB(180, 180, 180)
+    espDesc.TextSize = 12
+    espDesc.Font = Enum.Font.Gotham
+    espDesc.TextWrapped = true
+    espDesc.TextXAlignment = Enum.TextXAlignment.Left
+    espDesc.Parent = espSection
     
-    local detectCorner = Instance.new("UICorner")
-    detectCorner.CornerRadius = UDim.new(0, 8)
-    detectCorner.Parent = detectButton
+    -- Bouton toggle ESP
+    espToggleButton = Instance.new("TextButton")
+    espToggleButton.Name = "ESPToggle"
+    espToggleButton.Size = UDim2.new(1, -20, 0, 40)
+    espToggleButton.Position = UDim2.new(0, 10, 0, 80)
+    espToggleButton.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+    espToggleButton.BorderSizePixel = 0
+    espToggleButton.Text = "🔴 ESP: OFF"
+    espToggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+    espToggleButton.TextSize = 15
+    espToggleButton.Font = Enum.Font.GothamBold
+    espToggleButton.Parent = espSection
     
-    -- Zone de texte pour afficher les ennemis
-    enemiesListUI = Instance.new("TextLabel")
-    enemiesListUI.Name = "EnemiesList"
-    enemiesListUI.Size = UDim2.new(1, -20, 0, 110)
-    enemiesListUI.Position = UDim2.new(0, 10, 0, 85)
-    enemiesListUI.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
-    enemiesListUI.BorderSizePixel = 0
-    enemiesListUI.Text = "Cliquez sur 'Détecter' pour scanner les ennemis"
-    enemiesListUI.TextColor3 = Color3.fromRGB(150, 150, 150)
-    enemiesListUI.TextSize = 12
-    enemiesListUI.Font = Enum.Font.Code
-    enemiesListUI.TextWrapped = true
-    enemiesListUI.TextXAlignment = Enum.TextXAlignment.Left
-    enemiesListUI.TextYAlignment = Enum.TextYAlignment.Top
-    enemiesListUI.Parent = enemySection
+    local espBtnCorner = Instance.new("UICorner")
+    espBtnCorner.CornerRadius = UDim.new(0, 8)
+    espBtnCorner.Parent = espToggleButton
     
-    local enemiesCorner = Instance.new("UICorner")
-    enemiesCorner.CornerRadius = UDim.new(0, 6)
-    enemiesCorner.Parent = enemiesListUI
-    
-    -- Événement du bouton de détection
-    detectButton.MouseButton1Click:Connect(function()
-        detectEnemies()
+    -- Événement du bouton ESP
+    espToggleButton.MouseButton1Click:Connect(function()
+        toggleESP()
     end)
     
     -- Mise à jour de la taille du canvas
@@ -315,122 +326,137 @@ function makeDraggable(frame, dragHandle)
     end)
 end
 
--- Fonction pour détecter les ennemis
-function detectEnemies()
-    enemiesList = {} -- Réinitialiser la liste
-    
-    -- Récupérer le personnage du joueur
-    local playerChar = player.Character
-    if not playerChar or not playerChar:FindFirstChild("HumanoidRootPart") then
-        enemiesListUI.Text = "❌ Impossible de détecter (personnage non trouvé)"
-        enemiesListUI.TextColor3 = Color3.fromRGB(255, 100, 100)
+-- Fonction pour créer un ESP autour d'un ennemi
+function createESP(enemy)
+    -- Vérifier que l'ennemi a bien les parties nécessaires
+    if not enemy:FindFirstChild("HumanoidRootPart") then
         return
     end
     
-    local playerPos = playerChar.HumanoidRootPart.Position
+    -- Vérifier si un ESP existe déjà pour cet ennemi
+    if enemy:FindFirstChild("EnemyESP") then
+        return
+    end
     
-    print("[MOD MENU] Recherche d'ennemis...")
+    -- Créer le Highlight (encadré rouge)
+    local highlight = Instance.new("Highlight")
+    highlight.Name = "EnemyESP"
+    highlight.Adornee = enemy
+    highlight.FillColor = Color3.fromRGB(255, 0, 0)
+    highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+    highlight.FillTransparency = 0.5
+    highlight.OutlineTransparency = 0
+    highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+    highlight.Parent = enemy
+    
+    print("[ESP] ESP créé pour:", enemy.Name)
+end
+
+-- Fonction pour supprimer tous les ESP
+function clearAllESP()
+    for _, obj in pairs(game.Workspace:GetDescendants()) do
+        if obj.Name == "EnemyESP" and obj:IsA("Highlight") then
+            obj:Destroy()
+        end
+    end
+    print("[ESP] Tous les ESP supprimés")
+end
+
+-- Fonction pour mettre à jour les ESP
+function updateESP()
+    if not espEnabled then
+        return
+    end
+    
+    local playerChar = player.Character
+    if not playerChar then
+        return
+    end
+    
+    local enemiesFound = 0
     
     -- Méthode 1: Chercher dans le workspace tous les modèles avec un Humanoid
     for _, obj in pairs(game.Workspace:GetDescendants()) do
         if obj:IsA("Humanoid") and obj.Parent then
             local enemyModel = obj.Parent
             
-            -- Vérifier que ce n'est pas le joueur lui-même
-            if enemyModel ~= playerChar then
+            -- Vérifier que ce n'est pas le joueur lui-même et pas un autre joueur
+            if enemyModel ~= playerChar and not game.Players:GetPlayerFromCharacter(enemyModel) then
                 -- Vérifier si c'est un personnage (a un HumanoidRootPart)
-                local rootPart = enemyModel:FindFirstChild("HumanoidRootPart")
-                if rootPart then
-                    local distance = (rootPart.Position - playerPos).Magnitude
-                    
-                    -- Vérifier si dans la portée
-                    if distance <= ENEMY_DETECTION_RANGE then
-                        table.insert(enemiesList, {
-                            name = enemyModel.Name,
-                            distance = math.floor(distance),
-                            health = obj.Health,
-                            maxHealth = obj.MaxHealth,
-                            model = enemyModel,
-                            humanoid = obj
-                        })
-                    end
+                if enemyModel:FindFirstChild("HumanoidRootPart") then
+                    createESP(enemyModel)
+                    enemiesFound = enemiesFound + 1
                 end
             end
         end
     end
     
     -- Méthode 2: Chercher dans les dossiers communs d'ennemis
-    local commonEnemyFolders = {"Enemies", "NPCs", "Monsters", "Mobs", "Characters"}
+    local commonEnemyFolders = {"Enemies", "NPCs", "Monsters", "Mobs", "Characters", "Dungeon"}
     for _, folderName in pairs(commonEnemyFolders) do
         local folder = game.Workspace:FindFirstChild(folderName)
         if folder then
-            for _, enemy in pairs(folder:GetChildren()) do
+            for _, enemy in pairs(folder:GetDescendants()) do
                 if enemy:IsA("Model") and enemy:FindFirstChild("Humanoid") and enemy:FindFirstChild("HumanoidRootPart") then
-                    local distance = (enemy.HumanoidRootPart.Position - playerPos).Magnitude
-                    
-                    if distance <= ENEMY_DETECTION_RANGE then
-                        -- Vérifier si pas déjà dans la liste
-                        local alreadyAdded = false
-                        for _, existing in pairs(enemiesList) do
-                            if existing.model == enemy then
-                                alreadyAdded = true
-                                break
-                            end
-                        end
-                        
-                        if not alreadyAdded then
-                            table.insert(enemiesList, {
-                                name = enemy.Name,
-                                distance = math.floor(distance),
-                                health = enemy.Humanoid.Health,
-                                maxHealth = enemy.Humanoid.MaxHealth,
-                                model = enemy,
-                                humanoid = enemy.Humanoid
-                            })
-                        end
-                    end
+                    createESP(enemy)
+                    enemiesFound = enemiesFound + 1
                 end
             end
         end
     end
     
-    -- Afficher les résultats
-    if #enemiesList == 0 then
-        enemiesListUI.Text = "❌ Aucun ennemi trouvé dans un rayon de " .. ENEMY_DETECTION_RANGE .. " studs"
-        enemiesListUI.TextColor3 = Color3.fromRGB(255, 150, 50)
-        print("[MOD MENU] Aucun ennemi détecté")
-    else
-        -- Trier par distance
-        table.sort(enemiesList, function(a, b) return a.distance < b.distance end)
-        
-        local displayText = "✓ " .. #enemiesList .. " ennemi(s) détecté(s):\n\n"
-        for i, enemy in ipairs(enemiesList) do
-            if i <= 5 then -- Afficher maximum 5 ennemis
-                displayText = displayText .. string.format(
-                    "%d. %s\n   💚 HP: %d/%d | 📏 %dm\n",
-                    i,
-                    enemy.name,
-                    math.floor(enemy.health),
-                    math.floor(enemy.maxHealth),
-                    enemy.distance
-                )
-            end
-        end
-        
-        if #enemiesList > 5 then
-            displayText = displayText .. "\n... et " .. (#enemiesList - 5) .. " autre(s)"
-        end
-        
-        enemiesListUI.Text = displayText
-        enemiesListUI.TextColor3 = Color3.fromRGB(100, 255, 100)
-        print("[MOD MENU] " .. #enemiesList .. " ennemi(s) détecté(s)")
+    if enemiesFound > 0 then
+        print("[ESP] " .. enemiesFound .. " ennemis marqués")
     end
+end
+
+-- Fonction pour activer/désactiver l'ESP
+function toggleESP()
+    espEnabled = not espEnabled
     
-    game:GetService("StarterGui"):SetCore("SendNotification", {
-        Title = "Détection Ennemis";
-        Text = #enemiesList .. " ennemi(s) trouvé(s)";
-        Duration = 3;
-    })
+    if espEnabled then
+        -- Activer l'ESP
+        espToggleButton.Text = "🟢 ESP: ON"
+        espToggleButton.BackgroundColor3 = Color3.fromRGB(50, 200, 50)
+        
+        print("[ESP] ESP activé!")
+        
+        -- Première mise à jour immédiate
+        updateESP()
+        
+        -- Boucle de mise à jour continue
+        espConnection = RunService.Heartbeat:Connect(function()
+            task.wait(ESP_UPDATE_INTERVAL)
+            updateESP()
+        end)
+        
+        game:GetService("StarterGui"):SetCore("SendNotification", {
+            Title = "ESP Ennemis";
+            Text = "Activé! Les ennemis sont encadrés en rouge";
+            Duration = 3;
+        })
+    else
+        -- Désactiver l'ESP
+        espToggleButton.Text = "🔴 ESP: OFF"
+        espToggleButton.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+        
+        -- Arrêter la boucle
+        if espConnection then
+            espConnection:Disconnect()
+            espConnection = nil
+        end
+        
+        -- Supprimer tous les ESP
+        clearAllESP()
+        
+        print("[ESP] ESP désactivé!")
+        
+        game:GetService("StarterGui"):SetCore("SendNotification", {
+            Title = "ESP Ennemis";
+            Text = "Désactivé";
+            Duration = 2;
+        })
+    end
 end
 
 -- Fonction pour afficher/cacher le menu avec animation
