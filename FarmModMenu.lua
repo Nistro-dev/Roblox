@@ -642,10 +642,13 @@ function testMoveToMonster()
             local function moveToNextWaypoint()
                 if currentWaypoint <= #waypoints and not pathBlocked then
                     local waypoint = waypoints[currentWaypoint]
+                    print(string.format("[MOVE] Waypoint %d/%d - Distance: %.1fm", currentWaypoint, #waypoints, (waypoint.Position - humanoidRootPart.Position).Magnitude))
+                    
                     humanoid:MoveTo(waypoint.Position)
                     
                     if waypoint.Action == Enum.PathWaypointAction.Jump then
                         humanoid.Jump = true
+                        print("[MOVE] Saut requis!")
                     end
                     
                     currentWaypoint = currentWaypoint + 1
@@ -657,16 +660,21 @@ function testMoveToMonster()
             local blockedConnection
             
             reachedConnection = humanoid.MoveToFinished:Connect(function(reached)
+                print(string.format("[MOVE] MoveToFinished appelé - Reached: %s - Waypoint: %d/%d", tostring(reached), currentWaypoint - 1, #waypoints))
+                
                 if reached then
+                    print("[MOVE] Waypoint atteint avec succès!")
+                    
                     if currentWaypoint <= #waypoints then
                         -- Continuer vers le prochain waypoint
+                        print("[MOVE] Continuation vers le prochain waypoint...")
                         moveToNextWaypoint()
                     else
                         -- On a fini !
                         reachedConnection:Disconnect()
                         if blockedConnection then blockedConnection:Disconnect() end
                         
-                        print("[MOVE] Arrivé au monstre!")
+                        print("[MOVE] === ARRIVÉ AU MONSTRE! ===")
                         
                         game:GetService("StarterGui"):SetCore("SendNotification", {
                             Title = "Pathfinding";
@@ -680,12 +688,15 @@ function testMoveToMonster()
                     reachedConnection:Disconnect()
                     if blockedConnection then blockedConnection:Disconnect() end
                     
-                    print("[MOVE] Bloqué! Reclique sur Test pour réessayer")
+                    local distanceToTarget = (humanoidRootPart.Position - targetPos).Magnitude
+                    print(string.format("[MOVE] BLOQUÉ au waypoint %d/%d - Distance restante: %.1fm", currentWaypoint - 1, #waypoints, distanceToTarget))
+                    print("[MOVE] Raison possible: Obstacle, saut raté, ou chemin impossible")
+                    print("[MOVE] Position actuelle:", humanoidRootPart.Position)
                     
                     game:GetService("StarterGui"):SetCore("SendNotification", {
                         Title = "Pathfinding";
-                        Text = "Bloqué! Reclique sur Test";
-                        Duration = 2;
+                        Text = "Bloqué! Check console F9";
+                        Duration = 3;
                     })
                 end
             end)
