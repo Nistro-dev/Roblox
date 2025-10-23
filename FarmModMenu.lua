@@ -16,7 +16,9 @@ local ANIMATION_TIME = 0.3
 
 function logPath(message)
     print(message)
-    table.insert(pathfindingLogs, message)
+    if pathfindingLogs then
+        table.insert(pathfindingLogs, message)
+    end
 end
 
 function copyLogsToClipboard()
@@ -31,6 +33,7 @@ function clearLogs()
 end
 
 local pathfindingLogs = {}
+local goToMonsterBtn = nil
 
 function findNearestMonster()
     local playerChar = player.Character
@@ -64,17 +67,22 @@ end
 
 function goToMonster()
     if isMoving then
-        StarterGui:SetCore("SendNotification", {Title = "Monstre"; Text = "Déjà en cours!"; Duration = 2})
+        isMoving = false
+        goToMonsterBtn.Text = "👾 Démarrer"
+        logPath("[MOVE] ⏹️ Arrêté par l'utilisateur")
+        StarterGui:SetCore("SendNotification", {Title = "Monstre"; Text = "Arrêté!"; Duration = 2})
         return
     end
     
     isMoving = true
+    goToMonsterBtn.Text = "⏹️ Arrêter"
     logPath("========== RECHERCHE MONSTRE ==========")
     
     local playerChar = player.Character
     if not playerChar or not playerChar:FindFirstChild("HumanoidRootPart") then
         logPath("[MOVE] Personnage non trouvé")
         isMoving = false
+        goToMonsterBtn.Text = "👾 Démarrer"
         return
     end
     
@@ -82,6 +90,7 @@ function goToMonster()
     if not humanoid then
         logPath("[MOVE] Humanoid non trouvé")
         isMoving = false
+        goToMonsterBtn.Text = "👾 Démarrer"
         return
     end
     
@@ -91,7 +100,10 @@ function goToMonster()
     StarterGui:SetCore("SendNotification", {Title = "Monstre"; Text = "Recherche monstre..."; Duration = 2})
     
     local function moveToMonster()
-        if not isMoving then return end
+        if not isMoving then 
+            goToMonsterBtn.Text = "👾 Démarrer"
+            return 
+        end
         
         local nearestMonster, nearestDistance = findNearestMonster()
         
@@ -99,6 +111,7 @@ function goToMonster()
             logPath("[MOVE] ❌ Aucun monstre trouvé")
             StarterGui:SetCore("SendNotification", {Title = "Monstre"; Text = "Aucun monstre!"; Duration = 2})
             isMoving = false
+            goToMonsterBtn.Text = "👾 Démarrer"
             return
         end
         
@@ -106,6 +119,7 @@ function goToMonster()
         
         if nearestDistance < 8 then
             isMoving = false
+            goToMonsterBtn.Text = "👾 Démarrer"
             logPath("[MOVE] ✅ Arrivé au monstre!")
             StarterGui:SetCore("SendNotification", {Title = "Monstre"; Text = "Arrivé au monstre!"; Duration = 2})
             return
@@ -131,7 +145,10 @@ function goToMonster()
     moveToMonster()
     
     task.delay(30, function()
-        isMoving = false
+        if isMoving then
+            isMoving = false
+            goToMonsterBtn.Text = "👾 Démarrer"
+        end
     end)
 end
 
@@ -185,11 +202,11 @@ function createMainGUI()
     closeCorner.CornerRadius = UDim.new(0, 8)
     closeCorner.Parent = closeButton
     
-    local goToMonsterBtn = Instance.new("TextButton")
+    goToMonsterBtn = Instance.new("TextButton")
     goToMonsterBtn.Size = UDim2.new(1, -40, 0, 60)
     goToMonsterBtn.Position = UDim2.new(0, 20, 0, 70)
     goToMonsterBtn.BackgroundColor3 = Color3.fromRGB(50, 150, 255)
-    goToMonsterBtn.Text = "👾 Aller au monstre"
+    goToMonsterBtn.Text = "👾 Démarrer"
     goToMonsterBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
     goToMonsterBtn.TextSize = 16
     goToMonsterBtn.Font = Enum.Font.GothamBold
