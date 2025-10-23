@@ -139,7 +139,7 @@ function createMainGUI()
     if screenGui then screenGui:Destroy() end
     
     screenGui = Instance.new("ScreenGui")
-    screenGui.Name = "FarmModMenu"
+    screenGui.Name = "FarmModMenuV2"
     screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
     screenGui.Parent = player.PlayerGui
     
@@ -164,7 +164,7 @@ function createMainGUI()
     title.Size = UDim2.new(1, -100, 0, 40)
     title.Position = UDim2.new(0, 20, 0, 10)
     title.BackgroundTransparency = 1
-    title.Text = "👾 Farm Mod Menu"
+    title.Text = "👾 Farm Mod Menu V2"
     title.TextColor3 = Color3.fromRGB(255, 255, 255)
     title.TextSize = 20
     title.Font = Enum.Font.GothamBold
@@ -310,4 +310,4 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
     end
 end)
 
-StarterGui:SetCore("SendNotification", {Title = "Farm Mod Menu"; Text = "Chargé! Appuie sur INSERT"; Duration = 5})
+StarterGui:SetCore("SendNotification", {Title = "Farm Mod Menu V2"; Text = "Chargé! Appuie sur INSERT"; Duration = 5})
