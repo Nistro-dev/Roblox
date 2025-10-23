@@ -45,13 +45,11 @@ local savedPosition = nil -- Pour sauvegarder la position du menu
 local autoFarmEnabled = false -- Auto farm activé ou non
 local autoFarmConnection = nil -- Connection pour l'auto farm
 local currentTarget = nil -- Monstre ciblé actuellement
-local movementMethod = "pathfinding" -- Méthode de déplacement: "pathfinding", "teleport", "noclip"
 
 -- Configuration
 local TOGGLE_KEY = Enum.KeyCode.Insert -- Touche pour ouvrir/fermer le menu
 local MENU_SIZE = UDim2.new(0, 450, 0, 500)
 local ANIMATION_TIME = 0.3
-local ESP_UPDATE_INTERVAL = 2 -- Mettre à jour l'ESP toutes les 2 secondes (optimisé)
 local ENEMY_FOLDERS = {"Enemies", "NPCs", "Monsters", "Mobs", "Dungeon", "DungeonMobs", "Boss", "Bosses", "IzvDf"} -- Dossiers où chercher les ennemis
 local detectedFolders = {} -- Dossiers détectés automatiquement pendant le debug
 
@@ -197,102 +195,23 @@ local function createMainGUI()
     end)
     
     -- Section Déplacement Auto
-    local moveSection = createSection("🎯 Déplacement vers Monstre", contentContainer)
+    local moveSection = createSection("🎯 Pathfinding vers Monstre", contentContainer)
     moveSection.LayoutOrder = 2
-    moveSection.Size = UDim2.new(1, -20, 0, 230)
-    
-    -- Sélecteur de méthode
-    local methodLabel = Instance.new("TextLabel")
-    methodLabel.Size = UDim2.new(1, -20, 0, 25)
-    methodLabel.Position = UDim2.new(0, 10, 0, 40)
-    methodLabel.BackgroundTransparency = 1
-    methodLabel.Text = "Méthode de déplacement:"
-    methodLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
-    methodLabel.TextSize = 13
-    methodLabel.Font = Enum.Font.GothamBold
-    methodLabel.TextXAlignment = Enum.TextXAlignment.Left
-    methodLabel.Parent = moveSection
-    
-    -- Bouton Pathfinding
-    local pathfindBtn = Instance.new("TextButton")
-    pathfindBtn.Size = UDim2.new(0.48, 0, 0, 35)
-    pathfindBtn.Position = UDim2.new(0, 10, 0, 70)
-    pathfindBtn.BackgroundColor3 = Color3.fromRGB(50, 150, 255)
-    pathfindBtn.Text = "🛤️ Pathfinding"
-    pathfindBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    pathfindBtn.TextSize = 12
-    pathfindBtn.Font = Enum.Font.GothamBold
-    pathfindBtn.Parent = moveSection
-    local pf1 = Instance.new("UICorner")
-    pf1.CornerRadius = UDim.new(0, 6)
-    pf1.Parent = pathfindBtn
-    
-    -- Bouton Téléportation
-    local teleportBtn = Instance.new("TextButton")
-    teleportBtn.Size = UDim2.new(0.48, 0, 0, 35)
-    teleportBtn.Position = UDim2.new(0.52, 0, 0, 70)
-    teleportBtn.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
-    teleportBtn.Text = "⚡ Téléport"
-    teleportBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    teleportBtn.TextSize = 12
-    teleportBtn.Font = Enum.Font.GothamBold
-    teleportBtn.Parent = moveSection
-    local pf2 = Instance.new("UICorner")
-    pf2.CornerRadius = UDim.new(0, 6)
-    pf2.Parent = teleportBtn
-    
-    -- Bouton NoClip
-    local noclipBtn = Instance.new("TextButton")
-    noclipBtn.Size = UDim2.new(1, -20, 0, 35)
-    noclipBtn.Position = UDim2.new(0, 10, 0, 115)
-    noclipBtn.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
-    noclipBtn.Text = "👻 NoClip (traverse murs)"
-    noclipBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    noclipBtn.TextSize = 12
-    noclipBtn.Font = Enum.Font.GothamBold
-    noclipBtn.Parent = moveSection
-    local pf3 = Instance.new("UICorner")
-    pf3.CornerRadius = UDim.new(0, 6)
-    pf3.Parent = noclipBtn
+    moveSection.Size = UDim2.new(1, -20, 0, 100)
     
     -- Bouton Test déplacement
     local testMoveBtn = Instance.new("TextButton")
-    testMoveBtn.Size = UDim2.new(1, -20, 0, 40)
-    testMoveBtn.Position = UDim2.new(0, 10, 0, 160)
-    testMoveBtn.BackgroundColor3 = Color3.fromRGB(255, 150, 50)
+    testMoveBtn.Size = UDim2.new(1, -20, 0, 45)
+    testMoveBtn.Position = UDim2.new(0, 10, 0, 45)
+    testMoveBtn.BackgroundColor3 = Color3.fromRGB(50, 150, 255)
     testMoveBtn.Text = "🧪 TESTER: Aller au monstre le plus proche"
     testMoveBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    testMoveBtn.TextSize = 13
+    testMoveBtn.TextSize = 14
     testMoveBtn.Font = Enum.Font.GothamBold
     testMoveBtn.Parent = moveSection
     local pf4 = Instance.new("UICorner")
     pf4.CornerRadius = UDim.new(0, 8)
     pf4.Parent = testMoveBtn
-    
-    -- Événements de sélection de méthode
-    pathfindBtn.MouseButton1Click:Connect(function()
-        movementMethod = "pathfinding"
-        pathfindBtn.BackgroundColor3 = Color3.fromRGB(50, 150, 255)
-        teleportBtn.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
-        noclipBtn.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
-        print("[MOVE] Méthode: Pathfinding (contourne les murs)")
-    end)
-    
-    teleportBtn.MouseButton1Click:Connect(function()
-        movementMethod = "teleport"
-        pathfindBtn.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
-        teleportBtn.BackgroundColor3 = Color3.fromRGB(50, 150, 255)
-        noclipBtn.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
-        print("[MOVE] Méthode: Téléportation directe")
-    end)
-    
-    noclipBtn.MouseButton1Click:Connect(function()
-        movementMethod = "noclip"
-        pathfindBtn.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
-        teleportBtn.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
-        noclipBtn.BackgroundColor3 = Color3.fromRGB(50, 150, 255)
-        print("[MOVE] Méthode: NoClip (traverse tout)")
-    end)
     
     -- Événement test déplacement
     testMoveBtn.MouseButton1Click:Connect(function()
@@ -361,7 +280,6 @@ function makeDraggable(frame, dragHandle)
                     dragging = false
                     -- Sauvegarder la position quand on arrête de déplacer
                     savedPosition = frame.Position
-                    print("[MOD MENU] Position sauvegardée:", savedPosition)
                 end
             end)
         end
@@ -397,26 +315,42 @@ function findNearestMonster()
     local playerPos = playerChar.HumanoidRootPart.Position
     local nearestMonster = nil
     local nearestDistance = math.huge
+    local monstresTrouves = 0
     
     print("[MOVE] 🔍 Recherche du monstre le plus proche...")
     
-    -- Chercher dans les dossiers d'ennemis
-    for _, folderName in pairs(ENEMY_FOLDERS) do
-        local folder = game.Workspace:FindFirstChild(folderName)
-        if folder then
-            print("[MOVE] 📁 Scan du dossier:", folderName)
-            for _, child in pairs(folder:GetDescendants()) do
-                if child:IsA("Model") then
-                    local humanoid = child:FindFirstChild("Humanoid")
-                    local rootPart = child:FindFirstChild("HumanoidRootPart")
+    -- Scanner TOUT le Workspace (même méthode que le debug scan)
+    for _, obj in pairs(game.Workspace:GetDescendants()) do
+        if obj:IsA("Humanoid") and obj.Parent then
+            local model = obj.Parent
+            local rootPart = model:FindFirstChild("HumanoidRootPart")
+            
+            if rootPart and obj.Health > 0 then
+                -- Vérifier que ce n'est PAS un joueur et PAS nous
+                if model ~= playerChar and not isPlayer(model) then
+                    local distance = (rootPart.Position - playerPos).Magnitude
+                    monstresTrouves = monstresTrouves + 1
                     
-                    if humanoid and humanoid.Health > 0 and rootPart then
-                        if not isPlayer(child) and child ~= playerChar then
-                            local distance = (rootPart.Position - playerPos).Magnitude
+                    if distance < nearestDistance then
+                        nearestDistance = distance
+                        nearestMonster = model
+                        
+                        -- Sauvegarder automatiquement le dossier parent
+                        if model.Parent and model.Parent ~= game.Workspace then
+                            local folderName = model.Parent.Name
+                            local alreadyInList = false
                             
-                            if distance < nearestDistance then
-                                nearestDistance = distance
-                                nearestMonster = child
+                            for _, existing in pairs(ENEMY_FOLDERS) do
+                                if existing == folderName then
+                                    alreadyInList = true
+                                    break
+                                end
+                            end
+                            
+                            if not alreadyInList and not detectedFolders[folderName] then
+                                table.insert(ENEMY_FOLDERS, folderName)
+                                detectedFolders[folderName] = true
+                                print(string.format("[MOVE] 📁 Nouveau dossier détecté: %s", folderName))
                             end
                         end
                     end
@@ -426,9 +360,12 @@ function findNearestMonster()
     end
     
     if nearestMonster then
-        print(string.format("[MOVE] ✓ Monstre trouvé: %s à %dm", nearestMonster.Name, math.floor(nearestDistance)))
+        local parentName = nearestMonster.Parent and nearestMonster.Parent.Name or "Workspace"
+        print(string.format("[MOVE] ✓ Monstre trouvé: %s à %dm (Dossier: %s)", nearestMonster.Name, math.floor(nearestDistance), parentName))
+        print(string.format("[MOVE] 📊 Total monstres scannés: %d", monstresTrouves))
     else
         print("[MOVE] ❌ Aucun monstre trouvé")
+        print(string.format("[MOVE] 📊 Total entités scannées: %d", monstresTrouves))
     end
     
     return nearestMonster, nearestDistance
@@ -604,14 +541,14 @@ function isPlayer(model)
     return false
 end
 
--- Fonction pour tester le déplacement vers un monstre
+-- Fonction pour tester le déplacement vers un monstre (PATHFINDING uniquement)
 function testMoveToMonster()
-    print("========== TEST DÉPLACEMENT ==========")
+    print("========== TEST PATHFINDING ==========")
     
     local monster, distance = findNearestMonster()
     if not monster then
         game:GetService("StarterGui"):SetCore("SendNotification", {
-            Title = "Test Déplacement";
+            Title = "Pathfinding";
             Text = "Aucun monstre trouvé!";
             Duration = 3;
         })
@@ -628,116 +565,61 @@ function testMoveToMonster()
     local targetPos = monster.HumanoidRootPart.Position
     
     print(string.format("[MOVE] 🎯 Cible: %s (Distance: %dm)", monster.Name, math.floor(distance)))
-    print(string.format("[MOVE] 📍 Position départ: %s", tostring(humanoidRootPart.Position)))
-    print(string.format("[MOVE] 📍 Position cible: %s", tostring(targetPos)))
-    print(string.format("[MOVE] 🔧 Méthode: %s", movementMethod))
     
-    if movementMethod == "pathfinding" then
-        -- MÉTHODE 1: PathfindingService (contourne les murs)
-        print("[MOVE] 🛤️ Utilisation du Pathfinding...")
-        local PathfindingService = game:GetService("PathfindingService")
-        local humanoid = playerChar:FindFirstChild("Humanoid")
+    -- PathfindingService (contourne les murs)
+    print("[MOVE] 🛤️ Calcul du chemin...")
+    local PathfindingService = game:GetService("PathfindingService")
+    local humanoid = playerChar:FindFirstChild("Humanoid")
+    
+    if humanoid then
+        local path = PathfindingService:CreatePath({
+            AgentRadius = 2,
+            AgentHeight = 5,
+            AgentCanJump = true,
+            AgentMaxSlope = 45,
+            Costs = {
+                Water = 20
+            }
+        })
         
-        if humanoid then
-            local path = PathfindingService:CreatePath({
-                AgentRadius = 2,
-                AgentHeight = 5,
-                AgentCanJump = true,
-                AgentMaxSlope = 45,
-                Costs = {
-                    Water = 20
-                }
-            })
+        local success, errorMessage = pcall(function()
+            path:ComputeAsync(humanoidRootPart.Position, targetPos)
+        end)
+        
+        if success and path.Status == Enum.PathStatus.Success then
+            print("[MOVE] ✓ Chemin trouvé!")
+            local waypoints = path:GetWaypoints()
+            print(string.format("[MOVE] 📊 %d waypoints", #waypoints))
             
-            local success, errorMessage = pcall(function()
-                path.Compute(path, humanoidRootPart.Position, targetPos)
-            end)
-            
-            if success and path.Status == Enum.PathStatus.Success then
-                print("[MOVE] ✓ Chemin calculé avec succès!")
-                local waypoints = path:GetWaypoints()
-                print(string.format("[MOVE] 📊 Nombre de waypoints: %d", #waypoints))
-                
-                for i, waypoint in ipairs(waypoints) do
-                    if i <= 3 then
-                        print(string.format("[MOVE] Waypoint %d: %s (Action: %s)", i, tostring(waypoint.Position), tostring(waypoint.Action)))
+            -- Suivre le chemin
+            for i, waypoint in ipairs(waypoints) do
+                if i > 1 then -- Skip le premier (position actuelle)
+                    humanoid:MoveTo(waypoint.Position)
+                    
+                    if waypoint.Action == Enum.PathWaypointAction.Jump then
+                        humanoid.Jump = true
                     end
+                    
+                    humanoid.MoveToFinished:Wait()
                 end
-                
-                -- Suivre le chemin
-                humanoid:MoveTo(waypoints[2].Position)
-                print("[MOVE] 🚶 Déplacement vers le premier waypoint...")
-                
-                game:GetService("StarterGui"):SetCore("SendNotification", {
-                    Title = "Pathfinding";
-                    Text = "Chemin calculé! Check console F9";
-                    Duration = 3;
-                })
-            else
-                print("[MOVE] ❌ Échec calcul chemin:", errorMessage or "Chemin bloqué")
-                print("[MOVE] ℹ️ Essaye une autre méthode (Téléport ou NoClip)")
-                
-                game:GetService("StarterGui"):SetCore("SendNotification", {
-                    Title = "Pathfinding";
-                    Text = "Chemin bloqué! Essaye Téléport";
-                    Duration = 3;
-                })
             end
+            
+            print("[MOVE] ✓ Arrivé au monstre!")
+            
+            game:GetService("StarterGui"):SetCore("SendNotification", {
+                Title = "Pathfinding";
+                Text = "Arrivé devant " .. monster.Name;
+                Duration = 2;
+            })
+        else
+            print("[MOVE] ❌ Chemin bloqué:", errorMessage or path.Status)
+            
+            game:GetService("StarterGui"):SetCore("SendNotification", {
+                Title = "Pathfinding";
+                Text = "Chemin bloqué!";
+                Duration = 3;
+            })
         end
-        
-    elseif movementMethod == "teleport" then
-        -- MÉTHODE 2: Téléportation directe
-        print("[MOVE] ⚡ Téléportation directe...")
-        local offset = (targetPos - humanoidRootPart.Position).Unit * 5 -- 5 studs devant le monstre
-        local teleportPos = targetPos - offset
-        
-        print(string.format("[MOVE] 📍 Position téléportation: %s", tostring(teleportPos)))
-        
-        humanoidRootPart.CFrame = CFrame.new(teleportPos)
-        print("[MOVE] ✓ Téléporté!")
-        
-        game:GetService("StarterGui"):SetCore("SendNotification", {
-            Title = "Téléportation";
-            Text = "Téléporté devant " .. monster.Name;
-            Duration = 2;
-        })
-        
-    elseif movementMethod == "noclip" then
-        -- MÉTHODE 3: NoClip + déplacement direct
-        print("[MOVE] 👻 Mode NoClip activé...")
-        print("[MOVE] ℹ️ Désactivation des collisions...")
-        
-        -- Désactiver les collisions
-        for _, part in pairs(playerChar:GetDescendants()) do
-            if part:IsA("BasePart") then
-                part.CanCollide = false
-                print("[MOVE] 🔧 Collision désactivée pour:", part.Name)
-            end
-        end
-        
-        -- Déplacement direct
-        local direction = (targetPos - humanoidRootPart.Position).Unit
-        local moveDistance = math.min(distance - 5, 50) -- Max 50 studs par step
-        local newPos = humanoidRootPart.Position + (direction * moveDistance)
-        
-        print(string.format("[MOVE] 📍 Déplacement vers: %s", tostring(newPos)))
-        
-        humanoidRootPart.CFrame = CFrame.new(newPos)
-        
-        -- Réactiver les collisions après 2 secondes
-        task.wait(2)
-        for _, part in pairs(playerChar:GetDescendants()) do
-            if part:IsA("BasePart") then
-                part.CanCollide = true
-            end
-        end
-        print("[MOVE] ✓ NoClip désactivé, collisions réactivées")
-        
-        game:GetService("StarterGui"):SetCore("SendNotification", {
-            Title = "NoClip";
-            Text = "Déplacé à travers les murs!";
-            Duration = 2;
-        })
     end
     
     print("========== FIN TEST ==========")
