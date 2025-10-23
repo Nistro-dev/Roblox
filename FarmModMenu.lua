@@ -54,7 +54,8 @@ local espToggleButton = nil -- Référence au bouton toggle
 local TOGGLE_KEY = Enum.KeyCode.Insert -- Touche pour ouvrir/fermer le menu
 local MENU_SIZE = UDim2.new(0, 450, 0, 500)
 local ANIMATION_TIME = 0.3
-local ESP_UPDATE_INTERVAL = 0.5 -- Mettre à jour l'ESP toutes les 0.5 secondes
+local ESP_UPDATE_INTERVAL = 2 -- Mettre à jour l'ESP toutes les 2 secondes (optimisé)
+local ENEMY_FOLDERS = {"Enemies", "NPCs", "Monsters", "Mobs", "Dungeon", "DungeonMobs", "Boss", "Bosses"} -- Dossiers où chercher les ennemis
 
 -- Fonction pour créer le GUI principal
 local function createMainGUI()
@@ -209,7 +210,7 @@ local function createMainGUI()
     espDesc.Size = UDim2.new(1, -20, 0, 35)
     espDesc.Position = UDim2.new(0, 10, 0, 40)
     espDesc.BackgroundTransparency = 1
-    espDesc.Text = "Active un encadré rouge autour de tous les ennemis du donjon"
+    espDesc.Text = "Encadré rouge sur les monstres (pas les joueurs) - Optimisé pour les performances"
     espDesc.TextColor3 = Color3.fromRGB(180, 180, 180)
     espDesc.TextSize = 12
     espDesc.Font = Enum.Font.Gotham
@@ -362,7 +363,24 @@ function clearAllESP()
     print("[ESP] Tous les ESP supprimés")
 end
 
--- Fonction pour mettre à jour les ESP
+-- Fonction pour vérifier si un modèle est un joueur
+function isPlayer(model)
+    -- Vérifier si c'est un personnage de joueur
+    if Players:GetPlayerFromCharacter(model) then
+        return true
+    end
+    
+    -- Vérifier si le nom correspond à un joueur
+    for _, plr in pairs(Players:GetPlayers()) do
+        if model.Name == plr.Name or model.Name == plr.DisplayName then
+            return true
+        end
+    end
+    
+    return false
+end
+
+-- Fonction pour mettre à jour les ESP (OPTIMISÉE)
 function updateESP()
     if not espEnabled then
         return
@@ -374,39 +392,52 @@ function updateESP()
     end
     
     local enemiesFound = 0
+    local processedModels = {} -- Pour éviter les doublons
     
-    -- Méthode 1: Chercher dans le workspace tous les modèles avec un Humanoid
-    for _, obj in pairs(game.Workspace:GetDescendants()) do
-        if obj:IsA("Humanoid") and obj.Parent then
-            local enemyModel = obj.Parent
-            
-            -- Vérifier que ce n'est pas le joueur lui-même et pas un autre joueur
-            if enemyModel ~= playerChar and not Players:GetPlayerFromCharacter(enemyModel) then
-                -- Vérifier si c'est un personnage (a un HumanoidRootPart)
-                if enemyModel:FindFirstChild("HumanoidRootPart") then
-                    createESP(enemyModel)
-                    enemiesFound = enemiesFound + 1
-                end
-            end
-        end
-    end
-    
-    -- Méthode 2: Chercher dans les dossiers communs d'ennemis
-    local commonEnemyFolders = {"Enemies", "NPCs", "Monsters", "Mobs", "Characters", "Dungeon"}
-    for _, folderName in pairs(commonEnemyFolders) do
+    -- OPTIMISATION: Chercher UNIQUEMENT dans les dossiers d'ennemis spécifiques
+    for _, folderName in pairs(ENEMY_FOLDERS) do
         local folder = game.Workspace:FindFirstChild(folderName)
         if folder then
-            for _, enemy in pairs(folder:GetDescendants()) do
-                if enemy:IsA("Model") and enemy:FindFirstChild("Humanoid") and enemy:FindFirstChild("HumanoidRootPart") then
-                    createESP(enemy)
-                    enemiesFound = enemiesFound + 1
+            for _, child in pairs(folder:GetChildren()) do
+                -- Si c'est un modèle avec un Humanoid
+                if child:IsA("Model") and not processedModels[child] then
+                    local humanoid = child:FindFirstChild("Humanoid")
+                    local rootPart = child:FindFirstChild("HumanoidRootPart")
+                    
+                    if humanoid and rootPart then
+                        -- Vérifier que ce n'est PAS un joueur
+                        if not isPlayer(child) and child ~= playerChar then
+                            createESP(child)
+                            enemiesFound = enemiesFound + 1
+                            processedModels[child] = true
+                        end
+                    end
+                end
+                
+                -- Chercher aussi dans les sous-dossiers (1 niveau)
+                if child:IsA("Folder") or child:IsA("Model") then
+                    for _, subChild in pairs(child:GetChildren()) do
+                        if subChild:IsA("Model") and not processedModels[subChild] then
+                            local humanoid = subChild:FindFirstChild("Humanoid")
+                            local rootPart = subChild:FindFirstChild("HumanoidRootPart")
+                            
+                            if humanoid and rootPart then
+                                if not isPlayer(subChild) and subChild ~= playerChar then
+                                    createESP(subChild)
+                                    enemiesFound = enemiesFound + 1
+                                    processedModels[subChild] = true
+                                end
+                            end
+                        end
+                    end
                 end
             end
+            print("[ESP] Dossier '" .. folderName .. "' scanné")
         end
     end
     
     if enemiesFound > 0 then
-        print("[ESP] " .. enemiesFound .. " ennemis marqués")
+        print("[ESP] " .. enemiesFound .. " ennemis marqués (performance optimisée)")
     end
 end
 
@@ -424,10 +455,14 @@ function toggleESP()
         -- Première mise à jour immédiate
         updateESP()
         
-        -- Boucle de mise à jour continue
-        espConnection = RunService.Heartbeat:Connect(function()
-            task.wait(ESP_UPDATE_INTERVAL)
-            updateESP()
+        -- Boucle de mise à jour continue (optimisée avec spawn)
+        espConnection = task.spawn(function()
+            while espEnabled do
+                task.wait(ESP_UPDATE_INTERVAL)
+                if espEnabled then
+                    updateESP()
+                end
+            end
         end)
         
         game:GetService("StarterGui"):SetCore("SendNotification", {
@@ -440,11 +475,8 @@ function toggleESP()
         espToggleButton.Text = "🔴 ESP: OFF"
         espToggleButton.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
         
-        -- Arrêter la boucle
-        if espConnection then
-            espConnection:Disconnect()
-            espConnection = nil
-        end
+        -- La boucle s'arrêtera automatiquement car espEnabled = false
+        espConnection = nil
         
         -- Supprimer tous les ESP
         clearAllESP()
