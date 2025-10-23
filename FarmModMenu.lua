@@ -224,8 +224,13 @@ end
 
 -- Fonction pour logger avec stockage
 local function logPath(message)
-    print(message)
-    table.insert(pathfindingLogs, message)
+    local success, err = pcall(function()
+        print(message)
+        table.insert(pathfindingLogs, message)
+    end)
+    if not success then
+        print("[ERROR] logPath failed: " .. tostring(err))
+    end
 end
 
 -- Fonction pour copier les logs dans le presse-papier
@@ -460,29 +465,31 @@ function testMoveToMonster()
         if success and path.Status == Enum.PathStatus.Success then
             local waypoints = path:GetWaypoints()
             
-            logPath("")
-            logPath("╔═══════════════════════════════════════╗")
-            logPath("║      ✅ CHEMIN TROUVÉ - DÉPART ✅      ║")
-            logPath("╚═══════════════════════════════════════╝")
-            logPath(string.format("[MOVE] 🎯 Cible: %s", monster.Name))
-            logPath(string.format("[MOVE] 📏 Distance totale: %.1fm", distance))
-            logPath(string.format("[MOVE] 🗺️ Nombre de waypoints: %d", #waypoints))
-            logPath(string.format("[MOVE] 📍 Position départ: (%.1f, %.1f, %.1f)", humanoidRootPart.Position.X, humanoidRootPart.Position.Y, humanoidRootPart.Position.Z))
-            logPath(string.format("[MOVE] 🎯 Position arrivée: (%.1f, %.1f, %.1f)", targetPos.X, targetPos.Y, targetPos.Z))
-            logPath("═══════════════════════════════════════")
-            logPath("")
+            print("") -- Test sans logPath
+            print("╔═══════════════════════════════════════╗")
+            print("║      ✅ CHEMIN TROUVÉ - DÉPART ✅      ║")
+            print("╚═══════════════════════════════════════╝")
+            print(string.format("[MOVE] 🎯 Cible: %s", monster.Name))
+            print(string.format("[MOVE] 📏 Distance totale: %.1fm", distance))
+            print(string.format("[MOVE] 🗺️ Nombre de waypoints: %d", #waypoints))
+            print(string.format("[MOVE] 📍 Position départ: (%.1f, %.1f, %.1f)", humanoidRootPart.Position.X, humanoidRootPart.Position.Y, humanoidRootPart.Position.Z))
+            print(string.format("[MOVE] 🎯 Position arrivée: (%.1f, %.1f, %.1f)", targetPos.X, targetPos.Y, targetPos.Z))
+            print("═══════════════════════════════════════")
+            print("")
             
-            logPath("[DEBUG] 1/5 - Avant notification...")
+            print("[DEBUG] 1/5 - DÉBUT DU CODE PATHFINDING")
             
-            game:GetService("StarterGui"):SetCore("SendNotification", {
-                Title = "Pathfinding";
-                Text = "Déplacement vers " .. monster.Name;
-                Duration = 2;
-            })
+            local notifSuccess = pcall(function()
+                game:GetService("StarterGui"):SetCore("SendNotification", {
+                    Title = "Pathfinding";
+                    Text = "Déplacement vers " .. monster.Name;
+                    Duration = 2;
+                })
+            end)
             
-            logPath("[DEBUG] 2/5 - Après notification")
-            logPath("[MOVE] 🚀 Initialisation du mouvement...")
-            logPath("[DEBUG] 3/5 - Avant fonction moveToNextWaypoint")
+            print("[DEBUG] 2/5 - Notif success: " .. tostring(notifSuccess))
+            print("[MOVE] 🚀 Initialisation du mouvement...")
+            print("[DEBUG] 3/5 - Avant définition de moveToNextWaypoint")
             
             local currentWaypoint = 2
             local pathBlocked = false
