@@ -15,7 +15,7 @@ function createGUI()
     if screenGui then screenGui:Destroy() end
     
     screenGui = Instance.new("ScreenGui")
-    screenGui.Name = "SimpleMoveV4"
+    screenGui.Name = "SimpleMoveV5"
     screenGui.Parent = player.PlayerGui
     
     mainFrame = Instance.new("Frame")
@@ -171,4 +171,4 @@ end)
 
 startMoving()
 
-print("Simple Move V4 chargé! Appuie sur INSERT pour toggle")
+print("Simple Move V5 chargé! Appuie sur INSERT pour toggle")
