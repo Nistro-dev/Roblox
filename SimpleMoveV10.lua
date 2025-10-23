@@ -1,6 +1,7 @@
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
+local PathfindingService = game:GetService("PathfindingService")
 
 local player = Players.LocalPlayer
 local isMoving = false
@@ -17,7 +18,7 @@ function createGUI()
     if screenGui then screenGui:Destroy() end
     
     screenGui = Instance.new("ScreenGui")
-    screenGui.Name = "SimpleMoveV9"
+    screenGui.Name = "SimpleMoveV10"
     screenGui.Parent = player.PlayerGui
     
     mainFrame = Instance.new("Frame")
@@ -47,7 +48,7 @@ function createGUI()
     title.Size = UDim2.new(1, -20, 0, 25)
     title.Position = UDim2.new(0, 15, 0, 8)
     title.BackgroundTransparency = 1
-    title.Text = "AUTO MOVE V9"
+    title.Text = "AUTO MOVE V10"
     title.TextColor3 = Color3.fromRGB(220, 220, 220)
     title.TextSize = 14
     title.Font = Enum.Font.GothamMedium
@@ -155,16 +156,53 @@ function moveTowardTarget()
     local humanoid = char:WaitForChild("Humanoid")
     local root = char:WaitForChild("HumanoidRootPart")
 
+    -- Fonction interne pour suivre un chemin complet
+    local function followPath(targetPos)
+        local path = PathfindingService:CreatePath({
+            AgentRadius = 2.5,
+            AgentHeight = 5,
+            AgentCanJump = true,
+            AgentCanClimb = true,
+        })
+
+        path:ComputeAsync(root.Position, targetPos)
+
+        if path.Status == Enum.PathStatus.Success then
+            local waypoints = path:GetWaypoints()
+            print("✅ Chemin trouvé avec", #waypoints, "points")
+
+            for _, wp in ipairs(waypoints) do
+                if not isMoving then return end
+
+                if wp.Action == Enum.PathWaypointAction.Jump then
+                    humanoid.Jump = true
+                end
+
+                humanoid:MoveTo(wp.Position)
+                local finished = humanoid.MoveToFinished:Wait()
+
+                -- Si bloqué ou le chemin devient invalide, on relance un calcul
+                if not finished then
+                    print("⚠️ Blocage détecté, recalcul du chemin...")
+                    break
+                end
+            end
+        else
+            print("❌ Aucun chemin possible, déplacement direct")
+            humanoid:Move((targetPos - root.Position).Unit, false)
+        end
+    end
+
+    -- Boucle principale
     RunService.RenderStepped:Connect(function()
         if isMoving and humanoid and root then
             if not target or not target:FindFirstChild("HumanoidRootPart")
-               or (root.Position - target.HumanoidRootPart.Position).Magnitude > DETECTION_RADIUS then
+                or (root.Position - target.HumanoidRootPart.Position).Magnitude > DETECTION_RADIUS then
                 target = getNearestMonster()
             end
 
             if target and target:FindFirstChild("HumanoidRootPart") then
-                local direction = (target.HumanoidRootPart.Position - root.Position).Unit
-                humanoid:Move(Vector3.new(direction.X, 0, direction.Z), false)
+                followPath(target.HumanoidRootPart.Position)
             else
                 humanoid:Move(Vector3.zero)
             end
@@ -233,4 +271,4 @@ end)
 
 moveTowardTarget()
 
-print("Auto Move V9 chargé! Debug ciblé sur monstres uniquement")
+print("Auto Move V10 chargé! Avec PathfindingService pour éviter les murs")
