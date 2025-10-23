@@ -355,9 +355,19 @@ function testMoveToMonster()
         end)
         
         if success and path.Status == Enum.PathStatus.Success then
-            print("[MOVE] Chemin trouvé!")
             local waypoints = path:GetWaypoints()
-            print(string.format("[MOVE] %d waypoints - déplacement en cours...", #waypoints))
+            
+            print("")
+            print("╔═══════════════════════════════════════╗")
+            print("║      ✅ CHEMIN TROUVÉ - DÉPART ✅      ║")
+            print("╚═══════════════════════════════════════╝")
+            print(string.format("[MOVE] 🎯 Cible: %s", monster.Name))
+            print(string.format("[MOVE] 📏 Distance totale: %.1fm", distance))
+            print(string.format("[MOVE] 🗺️ Nombre de waypoints: %d", #waypoints))
+            print(string.format("[MOVE] 📍 Position départ: (%.1f, %.1f, %.1f)", humanoidRootPart.Position.X, humanoidRootPart.Position.Y, humanoidRootPart.Position.Z))
+            print(string.format("[MOVE] 🎯 Position arrivée: (%.1f, %.1f, %.1f)", targetPos.X, targetPos.Y, targetPos.Z))
+            print("═══════════════════════════════════════")
+            print("")
             
             game:GetService("StarterGui"):SetCore("SendNotification", {
                 Title = "Pathfinding";
@@ -371,14 +381,55 @@ function testMoveToMonster()
             local function moveToNextWaypoint()
                 if currentWaypoint <= #waypoints and not pathBlocked then
                     local waypoint = waypoints[currentWaypoint]
-                    local distToWaypoint = (waypoint.Position - humanoidRootPart.Position).Magnitude
-                    print(string.format("[MOVE] ➤ Waypoint %d/%d - Distance: %.1fm", currentWaypoint, #waypoints, distToWaypoint))
+                    local playerPos = humanoidRootPart.Position
+                    local waypointPos = waypoint.Position
                     
-                    humanoid:MoveTo(waypoint.Position)
+                    -- Calcul des distances
+                    local distToWaypoint = (waypointPos - playerPos).Magnitude
+                    local horizontalDist = math.sqrt((waypointPos.X - playerPos.X)^2 + (waypointPos.Z - playerPos.Z)^2)
+                    local heightDiff = waypointPos.Y - playerPos.Y
+                    
+                    -- Détection d'obstacles
+                    local rayOrigin = playerPos + Vector3.new(0, 2, 0) -- 2 studs au-dessus
+                    local rayDirection = (waypointPos - playerPos).Unit * distToWaypoint
+                    local raycastParams = RaycastParams.new()
+                    raycastParams.FilterType = Enum.RaycastFilterType.Blacklist
+                    raycastParams.FilterDescendantsInstances = {playerChar}
+                    
+                    local rayResult = workspace:Raycast(rayOrigin, rayDirection, raycastParams)
+                    local obstacleDetected = rayResult ~= nil
+                    local obstacleInfo = "Aucun"
+                    
+                    if rayResult then
+                        local obstacleDistance = (rayResult.Position - playerPos).Magnitude
+                        obstacleInfo = string.format("%s à %.1fm", rayResult.Instance.Name, obstacleDistance)
+                    end
+                    
+                    -- Type de waypoint
+                    local actionType = "Normal"
+                    if waypoint.Action == Enum.PathWaypointAction.Jump then
+                        actionType = "SAUT"
+                    elseif waypoint.Action == Enum.PathWaypointAction.Walk then
+                        actionType = "Marche"
+                    end
+                    
+                    -- Affichage détaillé
+                    print("═══════════════════════════════════════")
+                    print(string.format("[MOVE] ➤ WAYPOINT %d/%d", currentWaypoint, #waypoints))
+                    print(string.format("[MOVE] 📍 Position Joueur: (%.1f, %.1f, %.1f)", playerPos.X, playerPos.Y, playerPos.Z))
+                    print(string.format("[MOVE] 🎯 Position Waypoint: (%.1f, %.1f, %.1f)", waypointPos.X, waypointPos.Y, waypointPos.Z))
+                    print(string.format("[MOVE] 📏 Distance totale: %.1fm", distToWaypoint))
+                    print(string.format("[MOVE] ↔️ Distance horizontale: %.1fm", horizontalDist))
+                    print(string.format("[MOVE] ⬆️ Différence hauteur: %.1fm %s", math.abs(heightDiff), heightDiff >= 0 and "(monte)" or "(descend)"))
+                    print(string.format("[MOVE] 🎬 Type: %s", actionType))
+                    print(string.format("[MOVE] 🚧 Obstacle: %s", obstacleInfo))
+                    print("═══════════════════════════════════════")
+                    
+                    humanoid:MoveTo(waypointPos)
                     
                     if waypoint.Action == Enum.PathWaypointAction.Jump then
                         humanoid.Jump = true
-                        print("[MOVE] Saut requis!")
+                        print("[MOVE] 🦘 SAUT ACTIVÉ!")
                     end
                     
                     currentWaypoint = currentWaypoint + 1
@@ -388,7 +439,11 @@ function testMoveToMonster()
             local reachedConnection
             
             reachedConnection = humanoid.MoveToFinished:Connect(function(reached)
-                print(string.format("[MOVE] MoveToFinished - Reached: %s - Waypoint: %d/%d", tostring(reached), currentWaypoint - 1, #waypoints))
+                print("")
+                print("─────────────── MOVE FINISHED ───────────────")
+                print(string.format("[MOVE] ✓ MoveToFinished appelé"))
+                print(string.format("[MOVE] Reached: %s", reached and "✅ OUI" or "❌ NON"))
+                print(string.format("[MOVE] Waypoint complété: %d/%d", currentWaypoint - 1, #waypoints))
                 
                 if reached then
                     print("[MOVE] Waypoint atteint!")
@@ -406,16 +461,45 @@ function testMoveToMonster()
                         })
                     end
                 else
+                    -- Analyse détaillée du blocage
+                    local currentPos = humanoidRootPart.Position
+                    local distanceToTarget = (currentPos - targetPos).Magnitude
+                    local lastWaypointPos = waypoints[currentWaypoint - 1].Position
+                    local distToLastWaypoint = (currentPos - lastWaypointPos).Magnitude
+                    
+                    print("")
+                    print("╔═══════════════════════════════════════╗")
+                    print("║        ⚠️ PATHFINDING BLOQUÉ ⚠️       ║")
+                    print("╚═══════════════════════════════════════╝")
+                    print(string.format("[MOVE] 🛑 Bloqué au waypoint: %d/%d", currentWaypoint - 1, #waypoints))
+                    print(string.format("[MOVE] 📍 Position actuelle: (%.1f, %.1f, %.1f)", currentPos.X, currentPos.Y, currentPos.Z))
+                    print(string.format("[MOVE] 🎯 Position waypoint: (%.1f, %.1f, %.1f)", lastWaypointPos.X, lastWaypointPos.Y, lastWaypointPos.Z))
+                    print(string.format("[MOVE] 📏 Distance au waypoint: %.1fm", distToLastWaypoint))
+                    print(string.format("[MOVE] 🎯 Distance restante au monstre: %.1fm", distanceToTarget))
+                    print(string.format("[MOVE] 📊 Progression: %.1f%%", (1 - distanceToTarget / distance) * 100))
+                    
+                    -- Vérifier le sol sous les pieds
+                    local rayDown = Ray.new(currentPos, Vector3.new(0, -10, 0))
+                    local hitPart, hitPos = workspace:FindPartOnRay(rayDown, playerChar)
+                    if hitPart then
+                        local heightAboveGround = currentPos.Y - hitPos.Y
+                        print(string.format("[MOVE] 🌍 Sol détecté: %s (hauteur: %.1fm)", hitPart.Name, heightAboveGround))
+                    else
+                        print("[MOVE] ⚠️ AUCUN SOL DÉTECTÉ (dans le vide?)")
+                    end
+                    
+                    -- État du personnage
+                    print(string.format("[MOVE] 🏃 Vitesse actuelle: %.1f", humanoid.WalkSpeed))
+                    print(string.format("[MOVE] 💚 Santé: %d/%d", humanoid.Health, humanoid.MaxHealth))
+                    print(string.format("[MOVE] 🎯 État: %s", humanoid:GetState().Name))
+                    print("═══════════════════════════════════════")
+                    
                     pathBlocked = true
                     reachedConnection:Disconnect()
                     
-                    local distanceToTarget = (humanoidRootPart.Position - targetPos).Magnitude
-                    print(string.format("[MOVE] BLOQUÉ au waypoint %d/%d - Distance restante: %.1fm", currentWaypoint - 1, #waypoints, distanceToTarget))
-                    print("[MOVE] Raison: Obstacle, saut raté, ou chemin impossible")
-                    
                     game:GetService("StarterGui"):SetCore("SendNotification", {
                         Title = "Pathfinding";
-                        Text = "Bloqué! Check console F9";
+                        Text = string.format("Bloqué! %.1f%% parcouru", (1 - distanceToTarget / distance) * 100);
                         Duration = 3;
                     })
                 end
