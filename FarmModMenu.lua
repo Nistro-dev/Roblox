@@ -400,12 +400,27 @@ function findNearestMonster()
     return nearestMonster, nearestDistance
 end
 
+-- Variables pour empêcher les clics multiples
+local isPathfinding = false
+
 -- Fonction pour tester le déplacement vers un monstre
 function testMoveToMonster()
+    if isPathfinding then
+        game:GetService("StarterGui"):SetCore("SendNotification", {
+            Title = "Pathfinding";
+            Text = "Déjà en cours!";
+            Duration = 2;
+        })
+        logPath("[MOVE] ⚠️ Pathfinding déjà en cours, attends la fin!")
+        return
+    end
+    
+    isPathfinding = true
     logPath("========== TEST PATHFINDING ==========")
     
     local monster, distance = findNearestMonster()
     if not monster then
+        isPathfinding = false
         game:GetService("StarterGui"):SetCore("SendNotification", {
             Title = "Pathfinding";
             Text = "Aucun monstre trouvé!";
@@ -457,13 +472,17 @@ function testMoveToMonster()
             logPath("═══════════════════════════════════════")
             logPath("")
             
+            logPath("[DEBUG] 1/5 - Avant notification...")
+            
             game:GetService("StarterGui"):SetCore("SendNotification", {
                 Title = "Pathfinding";
                 Text = "Déplacement vers " .. monster.Name;
                 Duration = 2;
             })
             
+            logPath("[DEBUG] 2/5 - Après notification")
             logPath("[MOVE] 🚀 Initialisation du mouvement...")
+            logPath("[DEBUG] 3/5 - Avant fonction moveToNextWaypoint")
             
             local currentWaypoint = 2
             local pathBlocked = false
@@ -544,7 +563,8 @@ function testMoveToMonster()
                         moveToNextWaypoint()
                     else
                         reachedConnection:Disconnect()
-                        print("[MOVE] === ARRIVÉ AU MONSTRE! ===")
+                        isPathfinding = false
+                        logPath("[MOVE] === ✅ ARRIVÉ AU MONSTRE! ===")
                         
                         game:GetService("StarterGui"):SetCore("SendNotification", {
                             Title = "Pathfinding";
@@ -569,7 +589,8 @@ function testMoveToMonster()
                             moveToNextWaypoint()
                         else
                             reachedConnection:Disconnect()
-                            print("[MOVE] === ARRIVÉ AU MONSTRE! ===")
+                            isPathfinding = false
+                            logPath("[MOVE] === ✅ ARRIVÉ AU MONSTRE (avec tolérance)! ===")
                             
                             game:GetService("StarterGui"):SetCore("SendNotification", {
                                 Title = "Pathfinding";
@@ -615,6 +636,7 @@ function testMoveToMonster()
                             
                             pathBlocked = true
                             reachedConnection:Disconnect()
+                            isPathfinding = false
                             
                             game:GetService("StarterGui"):SetCore("SendNotification", {
                                 Title = "Pathfinding";
@@ -632,28 +654,36 @@ function testMoveToMonster()
                 end
             end)
             
+            logPath("[DEBUG] 4/5 - Après définition callback MoveToFinished")
             logPath("[MOVE] 🚀 Démarrage du pathfinding...")
             
             -- Sécurité: Capturer les erreurs
             local success, err = pcall(function()
+                logPath("[DEBUG] 5/5 - Dans pcall, avant moveToNextWaypoint()")
                 moveToNextWaypoint()
+                logPath("[DEBUG] 6/5 - Après moveToNextWaypoint()")
             end)
             
             if not success then
+                isPathfinding = false
                 logPath("[MOVE] ❌ ERREUR CRITIQUE: " .. tostring(err))
                 game:GetService("StarterGui"):SetCore("SendNotification", {
                     Title = "Erreur Pathfinding";
                     Text = "Erreur! Check F9";
                     Duration = 3;
                 })
+            else
+                logPath("[DEBUG] ✅ moveToNextWaypoint() appelé sans erreur")
             end
             
             task.delay(30, function()
                 if reachedConnection then reachedConnection:Disconnect() end
-                print("[MOVE] Timeout - déplacement trop long")
+                isPathfinding = false
+                logPath("[MOVE] ⏱️ Timeout - déplacement trop long (30s)")
             end)
         else
-            print("[MOVE] Chemin impossible:", errorMessage or path.Status)
+            isPathfinding = false
+            logPath("[MOVE] ❌ Chemin impossible: " .. tostring(errorMessage or path.Status))
             
             game:GetService("StarterGui"):SetCore("SendNotification", {
                 Title = "Pathfinding";
@@ -662,6 +692,8 @@ function testMoveToMonster()
             })
         end
     end
+    
+    logPath("[DEBUG] Fin de testMoveToMonster()")
 end
 
 -- Fonction pour afficher/cacher le menu avec animation
