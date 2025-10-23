@@ -74,13 +74,13 @@ end
 function startMoving()
     local playerChar = player.Character
     if not playerChar or not playerChar:FindFirstChild("HumanoidRootPart") then
-        print("Personnage non trouvé")
+        print("❌ Personnage non trouvé")
         return
     end
     
     local humanoid = playerChar:FindFirstChild("Humanoid")
     if not humanoid then
-        print("Humanoid non trouvé")
+        print("❌ Humanoid non trouvé")
         return
     end
     
@@ -88,27 +88,40 @@ function startMoving()
     local startPos = humanoidRootPart.Position
     local direction = humanoidRootPart.CFrame.LookVector
     
-    print("Démarrage mouvement en ligne droite")
+    print("✅ Démarrage mouvement en ligne droite")
+    print(string.format("📍 Position départ: %.1f, %.1f, %.1f", startPos.X, startPos.Y, startPos.Z))
+    print(string.format("🧭 Direction: %.2f, %.2f, %.2f", direction.X, direction.Y, direction.Z))
+    
+    humanoid.WalkSpeed = 16
+    humanoid.JumpPower = 50
     
     local function moveForward()
-        if not isMoving then return end
+        if not isMoving then 
+            print("⏹️ Arrêt demandé")
+            return 
+        end
         
         local currentPos = humanoidRootPart.Position
         local distance = (currentPos - startPos).Magnitude
         
+        print(string.format("📏 Distance parcourue: %.1fm", distance))
+        
         if distance > 100 then
             isMoving = false
-            print("Arrêt - Distance max atteinte")
+            print("🛑 Arrêt - Distance max atteinte (100m)")
             return
         end
         
         local targetPos = currentPos + (direction * 5)
+        print(string.format("🎯 Cible: %.1f, %.1f, %.1f", targetPos.X, targetPos.Y, targetPos.Z))
+        
         humanoid:MoveTo(targetPos)
-        humanoid.WalkSpeed = 16
+        print("🚶 MoveTo appelé")
         
-        print(string.format("Avancement: %.1fm", distance))
+        local distanceToTarget = (currentPos - targetPos).Magnitude
+        print(string.format("📐 Distance à la cible: %.1fm", distanceToTarget))
         
-        task.wait(0.5)
+        task.wait(1)
         moveForward()
     end
     
