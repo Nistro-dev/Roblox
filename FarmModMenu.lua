@@ -365,7 +365,7 @@ function findNearestMonster()
     local nearestDistance = math.huge
     local monstresTrouves = 0
     
-    print("[MOVE] 🔍 Recherche du monstre le plus proche...")
+    print("[MOVE] Recherche du monstre le plus proche...")
     
     -- Scanner TOUT le Workspace (même méthode que le debug scan)
     for _, obj in pairs(game.Workspace:GetDescendants()) do
@@ -398,7 +398,6 @@ function findNearestMonster()
                             if not alreadyInList and not detectedFolders[folderName] then
                                 table.insert(ENEMY_FOLDERS, folderName)
                                 detectedFolders[folderName] = true
-                                print(string.format("[MOVE] 📁 Nouveau dossier détecté: %s", folderName))
                             end
                         end
                     end
@@ -408,12 +407,9 @@ function findNearestMonster()
     end
     
     if nearestMonster then
-        local parentName = nearestMonster.Parent and nearestMonster.Parent.Name or "Workspace"
-        print(string.format("[MOVE] ✓ Monstre trouvé: %s à %dm (Dossier: %s)", nearestMonster.Name, math.floor(nearestDistance), parentName))
-        print(string.format("[MOVE] 📊 Total monstres scannés: %d", monstresTrouves))
+        print(string.format("[MOVE] Monstre trouvé: %s à %dm (%d total)", nearestMonster.Name, math.floor(nearestDistance), monstresTrouves))
     else
-        print("[MOVE] ❌ Aucun monstre trouvé")
-        print(string.format("[MOVE] 📊 Total entités scannées: %d", monstresTrouves))
+        print("[MOVE] Aucun monstre trouvé")
     end
     
     return nearestMonster, nearestDistance
@@ -605,17 +601,17 @@ function testMoveToMonster()
     
     local playerChar = player.Character
     if not playerChar or not playerChar:FindFirstChild("HumanoidRootPart") then
-        print("[MOVE] ❌ Personnage non trouvé")
+        print("[MOVE] Personnage non trouvé")
         return
     end
     
     local humanoidRootPart = playerChar.HumanoidRootPart
     local targetPos = monster.HumanoidRootPart.Position
     
-    print(string.format("[MOVE] 🎯 Cible: %s (Distance: %dm)", monster.Name, math.floor(distance)))
+    print(string.format("[MOVE] Cible: %s (%dm)", monster.Name, math.floor(distance)))
     
     -- PathfindingService (contourne les murs)
-    print("[MOVE] 🛤️ Calcul du chemin...")
+    print("[MOVE] Calcul du chemin...")
     local PathfindingService = game:GetService("PathfindingService")
     local humanoid = playerChar:FindFirstChild("Humanoid")
     
@@ -635,36 +631,80 @@ function testMoveToMonster()
         end)
         
         if success and path.Status == Enum.PathStatus.Success then
-            print("[MOVE] ✓ Chemin trouvé!")
+            print("[MOVE] Chemin trouvé!")
             local waypoints = path:GetWaypoints()
-            print(string.format("[MOVE] 📊 %d waypoints", #waypoints))
+            print(string.format("[MOVE] %d waypoints - déplacement en cours...", #waypoints))
             
-            -- Suivre le chemin
-            for i, waypoint in ipairs(waypoints) do
-                if i > 1 then -- Skip le premier (position actuelle)
+            -- Suivre le chemin COMPLET
+            local currentWaypoint = 2 -- Skip le premier (position actuelle)
+            local pathBlocked = false
+            
+            local function moveToNextWaypoint()
+                if currentWaypoint <= #waypoints and not pathBlocked then
+                    local waypoint = waypoints[currentWaypoint]
                     humanoid:MoveTo(waypoint.Position)
                     
                     if waypoint.Action == Enum.PathWaypointAction.Jump then
                         humanoid.Jump = true
                     end
                     
-                    humanoid.MoveToFinished:Wait()
+                    currentWaypoint = currentWaypoint + 1
                 end
             end
             
-            print("[MOVE] ✓ Arrivé au monstre!")
+            -- Connection pour gérer la progression
+            local reachedConnection
+            local blockedConnection
             
-            game:GetService("StarterGui"):SetCore("SendNotification", {
-                Title = "Pathfinding";
-                Text = "Arrivé devant " .. monster.Name;
-                Duration = 2;
-            })
+            reachedConnection = humanoid.MoveToFinished:Connect(function(reached)
+                if reached then
+                    if currentWaypoint <= #waypoints then
+                        -- Continuer vers le prochain waypoint
+                        moveToNextWaypoint()
+                    else
+                        -- On a fini !
+                        reachedConnection:Disconnect()
+                        if blockedConnection then blockedConnection:Disconnect() end
+                        
+                        print("[MOVE] Arrivé au monstre!")
+                        
+                        game:GetService("StarterGui"):SetCore("SendNotification", {
+                            Title = "Pathfinding";
+                            Text = "Arrivé devant " .. monster.Name;
+                            Duration = 2;
+                        })
+                    end
+                else
+                    -- Chemin bloqué
+                    pathBlocked = true
+                    reachedConnection:Disconnect()
+                    if blockedConnection then blockedConnection:Disconnect() end
+                    
+                    print("[MOVE] Bloqué! Reclique sur Test pour réessayer")
+                    
+                    game:GetService("StarterGui"):SetCore("SendNotification", {
+                        Title = "Pathfinding";
+                        Text = "Bloqué! Reclique sur Test";
+                        Duration = 2;
+                    })
+                end
+            end)
+            
+            -- Démarrer le mouvement
+            moveToNextWaypoint()
+            
+            -- Timeout de sécurité (30 secondes)
+            task.delay(30, function()
+                if reachedConnection then reachedConnection:Disconnect() end
+                if blockedConnection then blockedConnection:Disconnect() end
+                print("[MOVE] Timeout - déplacement trop long")
+            end)
         else
-            print("[MOVE] ❌ Chemin bloqué:", errorMessage or path.Status)
+            print("[MOVE] Chemin impossible:", errorMessage or path.Status)
             
             game:GetService("StarterGui"):SetCore("SendNotification", {
                 Title = "Pathfinding";
-                Text = "Chemin bloqué!";
+                Text = "Impossible de calculer un chemin!";
                 Duration = 3;
             })
         end
