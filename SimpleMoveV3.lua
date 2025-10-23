@@ -7,6 +7,7 @@ local player = Players.LocalPlayer
 local isMoving = false
 local screenGui = nil
 local mainFrame = nil
+local direction = nil
 
 local TOGGLE_KEY = Enum.KeyCode.Insert
 
@@ -14,7 +15,7 @@ function createGUI()
     if screenGui then screenGui:Destroy() end
     
     screenGui = Instance.new("ScreenGui")
-    screenGui.Name = "SimpleMove"
+    screenGui.Name = "SimpleMoveV3"
     screenGui.Parent = player.PlayerGui
     
     mainFrame = Instance.new("Frame")
@@ -29,7 +30,7 @@ function createGUI()
     title.Size = UDim2.new(1, 0, 0, 30)
     title.Position = UDim2.new(0, 0, 0, 0)
     title.BackgroundTransparency = 1
-    title.Text = "SIMPLE MOVE"
+    title.Text = "SIMPLE MOVE V3"
     title.TextColor3 = Color3.fromRGB(255, 255, 255)
     title.TextSize = 16
     title.Font = Enum.Font.GothamBold
@@ -86,7 +87,7 @@ function startMoving()
     
     local humanoidRootPart = playerChar.HumanoidRootPart
     local startPos = humanoidRootPart.Position
-    local direction = humanoidRootPart.CFrame.LookVector
+    direction = humanoidRootPart.CFrame.LookVector
     
     print("✅ Démarrage mouvement en ligne droite")
     print(string.format("📍 Position départ: %.1f, %.1f, %.1f", startPos.X, startPos.Y, startPos.Z))
@@ -100,28 +101,34 @@ function startMoving()
             print("⏹️ Arrêt demandé")
             return 
         end
-        
+
+        local playerChar = player.Character
+        if not playerChar or not playerChar:FindFirstChild("HumanoidRootPart") then return end
+        local humanoid = playerChar:FindFirstChild("Humanoid")
+        local humanoidRootPart = playerChar.HumanoidRootPart
+
         local currentPos = humanoidRootPart.Position
-        local distance = (currentPos - startPos).Magnitude
-        
-        print(string.format("📏 Distance parcourue: %.1fm", distance))
-        
-        if distance > 100 then
-            isMoving = false
-            print("🛑 Arrêt - Distance max atteinte (100m)")
-            return
-        end
-        
-        local targetPos = currentPos + (direction * 5)
+        local flatDirection = Vector3.new(direction.X, 0, direction.Z).Unit  -- Y=0 pour pas descendre dans le sol
+        local targetPos = currentPos + (flatDirection * 5)
+
         print(string.format("🎯 Cible: %.1f, %.1f, %.1f", targetPos.X, targetPos.Y, targetPos.Z))
-        
         humanoid:MoveTo(targetPos)
         print("🚶 MoveTo appelé")
-        
-        local distanceToTarget = (currentPos - targetPos).Magnitude
-        print(string.format("📐 Distance à la cible: %.1fm", distanceToTarget))
-        
-        task.wait(1)
+
+        -- Attendre que le déplacement soit terminé avant de continuer
+        humanoid.MoveToFinished:Wait()
+
+        -- Vérifier la distance parcourue
+        local newPos = humanoidRootPart.Position
+        local distance = (newPos - currentPos).Magnitude
+        print(string.format("📏 Distance parcourue: %.1fm", distance))
+
+        if distance < 0.5 then
+            print("⚠️ Bloqué ou aucune avancée détectée")
+            isMoving = false
+            return
+        end
+
         moveForward()
     end
     
@@ -168,4 +175,4 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
     end
 end)
 
-print("Simple Move chargé! Appuie sur INSERT pour toggle")
+print("Simple Move V3 chargé! Appuie sur INSERT pour toggle")
