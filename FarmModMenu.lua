@@ -26,25 +26,7 @@ if oldGui then
     print("[MOD MENU] ✓ Ancien GUI supprimé")
 end
 
--- Supprimer tous les anciens ESP (OPTIMISÉ - seulement dans les dossiers d'ennemis)
-local cleanupFolders = {"Enemies", "NPCs", "Monsters", "Mobs", "Dungeon", "DungeonMobs", "Boss", "Bosses", "IzvDf"}
-local espCleaned = 0
-
-for _, folderName in pairs(cleanupFolders) do
-    local folder = game.Workspace:FindFirstChild(folderName)
-    if folder then
-        for _, obj in pairs(folder:GetDescendants()) do
-            if obj.Name == "EnemyESP" and obj:IsA("Highlight") then
-                obj:Destroy()
-                espCleaned = espCleaned + 1
-            end
-        end
-    end
-end
-
-if espCleaned > 0 then
-    print("[MOD MENU] ✓ " .. espCleaned .. " anciens ESP supprimés")
-end
+-- Pas d'ESP à nettoyer (fonctionnalité supprimée)
 
 -- Forcer l'arrêt de toutes les anciennes boucles en mettant un flag global
 _G.FARM_MOD_MENU_ACTIVE = false
@@ -60,10 +42,10 @@ local menuVisible = false
 local screenGui = nil
 local mainFrame = nil
 local savedPosition = nil -- Pour sauvegarder la position du menu
-local espEnabled = false -- ESP activé ou non
-local espConnection = nil -- Connection pour l'ESP continu
-local espFolder = nil -- Dossier pour stocker les ESP
-local espToggleButton = nil -- Référence au bouton toggle
+local autoFarmEnabled = false -- Auto farm activé ou non
+local autoFarmConnection = nil -- Connection pour l'auto farm
+local currentTarget = nil -- Monstre ciblé actuellement
+local movementMethod = "pathfinding" -- Méthode de déplacement: "pathfinding", "teleport", "noclip"
 
 -- Configuration
 local TOGGLE_KEY = Enum.KeyCode.Insert -- Touche pour ouvrir/fermer le menu
@@ -214,31 +196,107 @@ local function createMainGUI()
         debugScanEntities(debugOutput)
     end)
     
-    -- Section ESP Ennemis
-    local espSection = createSection("👾 ESP Ennemis", contentContainer)
-    espSection.LayoutOrder = 2
-    espSection.Size = UDim2.new(1, -20, 0, 90)
+    -- Section Déplacement Auto
+    local moveSection = createSection("🎯 Déplacement vers Monstre", contentContainer)
+    moveSection.LayoutOrder = 2
+    moveSection.Size = UDim2.new(1, -20, 0, 230)
     
-    -- Bouton toggle ESP
-    espToggleButton = Instance.new("TextButton")
-    espToggleButton.Name = "ESPToggle"
-    espToggleButton.Size = UDim2.new(1, -20, 0, 40)
-    espToggleButton.Position = UDim2.new(0, 10, 0, 40)
-    espToggleButton.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
-    espToggleButton.BorderSizePixel = 0
-    espToggleButton.Text = "🔴 ESP: OFF"
-    espToggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-    espToggleButton.TextSize = 15
-    espToggleButton.Font = Enum.Font.GothamBold
-    espToggleButton.Parent = espSection
+    -- Sélecteur de méthode
+    local methodLabel = Instance.new("TextLabel")
+    methodLabel.Size = UDim2.new(1, -20, 0, 25)
+    methodLabel.Position = UDim2.new(0, 10, 0, 40)
+    methodLabel.BackgroundTransparency = 1
+    methodLabel.Text = "Méthode de déplacement:"
+    methodLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+    methodLabel.TextSize = 13
+    methodLabel.Font = Enum.Font.GothamBold
+    methodLabel.TextXAlignment = Enum.TextXAlignment.Left
+    methodLabel.Parent = moveSection
     
-    local espBtnCorner = Instance.new("UICorner")
-    espBtnCorner.CornerRadius = UDim.new(0, 8)
-    espBtnCorner.Parent = espToggleButton
+    -- Bouton Pathfinding
+    local pathfindBtn = Instance.new("TextButton")
+    pathfindBtn.Size = UDim2.new(0.48, 0, 0, 35)
+    pathfindBtn.Position = UDim2.new(0, 10, 0, 70)
+    pathfindBtn.BackgroundColor3 = Color3.fromRGB(50, 150, 255)
+    pathfindBtn.Text = "🛤️ Pathfinding"
+    pathfindBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    pathfindBtn.TextSize = 12
+    pathfindBtn.Font = Enum.Font.GothamBold
+    pathfindBtn.Parent = moveSection
+    local pf1 = Instance.new("UICorner")
+    pf1.CornerRadius = UDim.new(0, 6)
+    pf1.Parent = pathfindBtn
     
-    -- Événement du bouton ESP
-    espToggleButton.MouseButton1Click:Connect(function()
-        toggleESP()
+    -- Bouton Téléportation
+    local teleportBtn = Instance.new("TextButton")
+    teleportBtn.Size = UDim2.new(0.48, 0, 0, 35)
+    teleportBtn.Position = UDim2.new(0.52, 0, 0, 70)
+    teleportBtn.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+    teleportBtn.Text = "⚡ Téléport"
+    teleportBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    teleportBtn.TextSize = 12
+    teleportBtn.Font = Enum.Font.GothamBold
+    teleportBtn.Parent = moveSection
+    local pf2 = Instance.new("UICorner")
+    pf2.CornerRadius = UDim.new(0, 6)
+    pf2.Parent = teleportBtn
+    
+    -- Bouton NoClip
+    local noclipBtn = Instance.new("TextButton")
+    noclipBtn.Size = UDim2.new(1, -20, 0, 35)
+    noclipBtn.Position = UDim2.new(0, 10, 0, 115)
+    noclipBtn.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+    noclipBtn.Text = "👻 NoClip (traverse murs)"
+    noclipBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    noclipBtn.TextSize = 12
+    noclipBtn.Font = Enum.Font.GothamBold
+    noclipBtn.Parent = moveSection
+    local pf3 = Instance.new("UICorner")
+    pf3.CornerRadius = UDim.new(0, 6)
+    pf3.Parent = noclipBtn
+    
+    -- Bouton Test déplacement
+    local testMoveBtn = Instance.new("TextButton")
+    testMoveBtn.Size = UDim2.new(1, -20, 0, 40)
+    testMoveBtn.Position = UDim2.new(0, 10, 0, 160)
+    testMoveBtn.BackgroundColor3 = Color3.fromRGB(255, 150, 50)
+    testMoveBtn.Text = "🧪 TESTER: Aller au monstre le plus proche"
+    testMoveBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    testMoveBtn.TextSize = 13
+    testMoveBtn.Font = Enum.Font.GothamBold
+    testMoveBtn.Parent = moveSection
+    local pf4 = Instance.new("UICorner")
+    pf4.CornerRadius = UDim.new(0, 8)
+    pf4.Parent = testMoveBtn
+    
+    -- Événements de sélection de méthode
+    pathfindBtn.MouseButton1Click:Connect(function()
+        movementMethod = "pathfinding"
+        pathfindBtn.BackgroundColor3 = Color3.fromRGB(50, 150, 255)
+        teleportBtn.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+        noclipBtn.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+        print("[MOVE] Méthode: Pathfinding (contourne les murs)")
+    end)
+    
+    teleportBtn.MouseButton1Click:Connect(function()
+        movementMethod = "teleport"
+        pathfindBtn.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+        teleportBtn.BackgroundColor3 = Color3.fromRGB(50, 150, 255)
+        noclipBtn.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+        print("[MOVE] Méthode: Téléportation directe")
+    end)
+    
+    noclipBtn.MouseButton1Click:Connect(function()
+        movementMethod = "noclip"
+        pathfindBtn.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+        teleportBtn.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+        noclipBtn.BackgroundColor3 = Color3.fromRGB(50, 150, 255)
+        print("[MOVE] Méthode: NoClip (traverse tout)")
+    end)
+    
+    -- Événement test déplacement
+    testMoveBtn.MouseButton1Click:Connect(function()
+        testMoveToMonster()
     end)
     
     -- Mise à jour de la taille du canvas
@@ -328,40 +386,52 @@ function makeDraggable(frame, dragHandle)
     end)
 end
 
--- Fonction pour créer un ESP autour d'un ennemi
-function createESP(enemy)
-    -- Vérifier que l'ennemi a bien les parties nécessaires
-    if not enemy:FindFirstChild("HumanoidRootPart") then
-        return
+-- Fonction pour trouver le monstre le plus proche
+function findNearestMonster()
+    local playerChar = player.Character
+    if not playerChar or not playerChar:FindFirstChild("HumanoidRootPart") then
+        print("[MOVE] ❌ Personnage non trouvé")
+        return nil
     end
     
-    -- Vérifier si un ESP existe déjà pour cet ennemi
-    if enemy:FindFirstChild("EnemyESP") then
-        return
-    end
+    local playerPos = playerChar.HumanoidRootPart.Position
+    local nearestMonster = nil
+    local nearestDistance = math.huge
     
-    -- Créer le Highlight (encadré rouge)
-    local highlight = Instance.new("Highlight")
-    highlight.Name = "EnemyESP"
-    highlight.Adornee = enemy
-    highlight.FillColor = Color3.fromRGB(255, 0, 0)
-    highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
-    highlight.FillTransparency = 0.5
-    highlight.OutlineTransparency = 0
-    highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
-    highlight.Parent = enemy
+    print("[MOVE] 🔍 Recherche du monstre le plus proche...")
     
-    print("[ESP] ESP créé pour:", enemy.Name)
-end
-
--- Fonction pour supprimer tous les ESP
-function clearAllESP()
-    for _, obj in pairs(game.Workspace:GetDescendants()) do
-        if obj.Name == "EnemyESP" and obj:IsA("Highlight") then
-            obj:Destroy()
+    -- Chercher dans les dossiers d'ennemis
+    for _, folderName in pairs(ENEMY_FOLDERS) do
+        local folder = game.Workspace:FindFirstChild(folderName)
+        if folder then
+            print("[MOVE] 📁 Scan du dossier:", folderName)
+            for _, child in pairs(folder:GetDescendants()) do
+                if child:IsA("Model") then
+                    local humanoid = child:FindFirstChild("Humanoid")
+                    local rootPart = child:FindFirstChild("HumanoidRootPart")
+                    
+                    if humanoid and humanoid.Health > 0 and rootPart then
+                        if not isPlayer(child) and child ~= playerChar then
+                            local distance = (rootPart.Position - playerPos).Magnitude
+                            
+                            if distance < nearestDistance then
+                                nearestDistance = distance
+                                nearestMonster = child
+                            end
+                        end
+                    end
+                end
+            end
         end
     end
-    print("[ESP] Tous les ESP supprimés")
+    
+    if nearestMonster then
+        print(string.format("[MOVE] ✓ Monstre trouvé: %s à %dm", nearestMonster.Name, math.floor(nearestDistance)))
+    else
+        print("[MOVE] ❌ Aucun monstre trouvé")
+    end
+    
+    return nearestMonster, nearestDistance
 end
 
 -- Fonction pour scanner et débugger toutes les entités
@@ -499,8 +569,8 @@ function debugScanEntities(outputLabel)
         
         print("[DEBUG] Total: " .. #allEntities .. " entités scannées")
         
-        -- Afficher les dossiers d'ennemis
-        local folderList = "Dossiers ESP actifs: "
+        -- Afficher les dossiers de monstres
+        local folderList = "Dossiers monstres: "
         for i, folder in ipairs(ENEMY_FOLDERS) do
             if i <= 5 then
                 folderList = folderList .. folder .. ", "
@@ -534,115 +604,143 @@ function isPlayer(model)
     return false
 end
 
--- Fonction pour mettre à jour les ESP (OPTIMISÉE)
-function updateESP()
-    if not espEnabled then
+-- Fonction pour tester le déplacement vers un monstre
+function testMoveToMonster()
+    print("========== TEST DÉPLACEMENT ==========")
+    
+    local monster, distance = findNearestMonster()
+    if not monster then
+        game:GetService("StarterGui"):SetCore("SendNotification", {
+            Title = "Test Déplacement";
+            Text = "Aucun monstre trouvé!";
+            Duration = 3;
+        })
         return
     end
     
     local playerChar = player.Character
-    if not playerChar then
+    if not playerChar or not playerChar:FindFirstChild("HumanoidRootPart") then
+        print("[MOVE] ❌ Personnage non trouvé")
         return
     end
     
-    local enemiesFound = 0
-    local processedModels = {} -- Pour éviter les doublons
+    local humanoidRootPart = playerChar.HumanoidRootPart
+    local targetPos = monster.HumanoidRootPart.Position
     
-    -- OPTIMISATION: Chercher UNIQUEMENT dans les dossiers d'ennemis spécifiques
-    for _, folderName in pairs(ENEMY_FOLDERS) do
-        local folder = game.Workspace:FindFirstChild(folderName)
-        if folder then
-            for _, child in pairs(folder:GetChildren()) do
-                -- Si c'est un modèle avec un Humanoid
-                if child:IsA("Model") and not processedModels[child] then
-                    local humanoid = child:FindFirstChild("Humanoid")
-                    local rootPart = child:FindFirstChild("HumanoidRootPart")
-                    
-                    if humanoid and rootPart then
-                        -- Vérifier que ce n'est PAS un joueur
-                        if not isPlayer(child) and child ~= playerChar then
-                            createESP(child)
-                            enemiesFound = enemiesFound + 1
-                            processedModels[child] = true
-                        end
+    print(string.format("[MOVE] 🎯 Cible: %s (Distance: %dm)", monster.Name, math.floor(distance)))
+    print(string.format("[MOVE] 📍 Position départ: %s", tostring(humanoidRootPart.Position)))
+    print(string.format("[MOVE] 📍 Position cible: %s", tostring(targetPos)))
+    print(string.format("[MOVE] 🔧 Méthode: %s", movementMethod))
+    
+    if movementMethod == "pathfinding" then
+        -- MÉTHODE 1: PathfindingService (contourne les murs)
+        print("[MOVE] 🛤️ Utilisation du Pathfinding...")
+        local PathfindingService = game:GetService("PathfindingService")
+        local humanoid = playerChar:FindFirstChild("Humanoid")
+        
+        if humanoid then
+            local path = PathfindingService:CreatePath({
+                AgentRadius = 2,
+                AgentHeight = 5,
+                AgentCanJump = true,
+                AgentMaxSlope = 45,
+                Costs = {
+                    Water = 20
+                }
+            })
+            
+            local success, errorMessage = pcall(function()
+                path.Compute(path, humanoidRootPart.Position, targetPos)
+            end)
+            
+            if success and path.Status == Enum.PathStatus.Success then
+                print("[MOVE] ✓ Chemin calculé avec succès!")
+                local waypoints = path:GetWaypoints()
+                print(string.format("[MOVE] 📊 Nombre de waypoints: %d", #waypoints))
+                
+                for i, waypoint in ipairs(waypoints) do
+                    if i <= 3 then
+                        print(string.format("[MOVE] Waypoint %d: %s (Action: %s)", i, tostring(waypoint.Position), tostring(waypoint.Action)))
                     end
                 end
                 
-                -- Chercher aussi dans les sous-dossiers (1 niveau)
-                if child:IsA("Folder") or child:IsA("Model") then
-                    for _, subChild in pairs(child:GetChildren()) do
-                        if subChild:IsA("Model") and not processedModels[subChild] then
-                            local humanoid = subChild:FindFirstChild("Humanoid")
-                            local rootPart = subChild:FindFirstChild("HumanoidRootPart")
-                            
-                            if humanoid and rootPart then
-                                if not isPlayer(subChild) and subChild ~= playerChar then
-                                    createESP(subChild)
-                                    enemiesFound = enemiesFound + 1
-                                    processedModels[subChild] = true
-                                end
-                            end
-                        end
-                    end
-                end
+                -- Suivre le chemin
+                humanoid:MoveTo(waypoints[2].Position)
+                print("[MOVE] 🚶 Déplacement vers le premier waypoint...")
+                
+                game:GetService("StarterGui"):SetCore("SendNotification", {
+                    Title = "Pathfinding";
+                    Text = "Chemin calculé! Check console F9";
+                    Duration = 3;
+                })
+            else
+                print("[MOVE] ❌ Échec calcul chemin:", errorMessage or "Chemin bloqué")
+                print("[MOVE] ℹ️ Essaye une autre méthode (Téléport ou NoClip)")
+                
+                game:GetService("StarterGui"):SetCore("SendNotification", {
+                    Title = "Pathfinding";
+                    Text = "Chemin bloqué! Essaye Téléport";
+                    Duration = 3;
+                })
             end
-            print("[ESP] Dossier '" .. folderName .. "' scanné")
         end
-    end
-    
-    if enemiesFound > 0 then
-        print("[ESP] " .. enemiesFound .. " ennemis marqués (performance optimisée)")
-    end
-end
-
--- Fonction pour activer/désactiver l'ESP
-function toggleESP()
-    espEnabled = not espEnabled
-    
-    if espEnabled then
-        -- Activer l'ESP
-        espToggleButton.Text = "🟢 ESP: ON"
-        espToggleButton.BackgroundColor3 = Color3.fromRGB(50, 200, 50)
         
-        print("[ESP] ESP activé!")
+    elseif movementMethod == "teleport" then
+        -- MÉTHODE 2: Téléportation directe
+        print("[MOVE] ⚡ Téléportation directe...")
+        local offset = (targetPos - humanoidRootPart.Position).Unit * 5 -- 5 studs devant le monstre
+        local teleportPos = targetPos - offset
         
-        -- Première mise à jour immédiate
-        updateESP()
+        print(string.format("[MOVE] 📍 Position téléportation: %s", tostring(teleportPos)))
         
-        -- Boucle de mise à jour continue (optimisée avec spawn)
-        espConnection = task.spawn(function()
-            while espEnabled and _G.FARM_MOD_MENU_ACTIVE do
-                task.wait(ESP_UPDATE_INTERVAL)
-                if espEnabled and _G.FARM_MOD_MENU_ACTIVE then
-                    updateESP()
-                end
-            end
-        end)
+        humanoidRootPart.CFrame = CFrame.new(teleportPos)
+        print("[MOVE] ✓ Téléporté!")
         
         game:GetService("StarterGui"):SetCore("SendNotification", {
-            Title = "ESP Ennemis";
-            Text = "Activé! Les ennemis sont encadrés en rouge";
-            Duration = 3;
+            Title = "Téléportation";
+            Text = "Téléporté devant " .. monster.Name;
+            Duration = 2;
         })
-    else
-        -- Désactiver l'ESP
-        espToggleButton.Text = "🔴 ESP: OFF"
-        espToggleButton.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
         
-        -- La boucle s'arrêtera automatiquement car espEnabled = false
-        espConnection = nil
+    elseif movementMethod == "noclip" then
+        -- MÉTHODE 3: NoClip + déplacement direct
+        print("[MOVE] 👻 Mode NoClip activé...")
+        print("[MOVE] ℹ️ Désactivation des collisions...")
         
-        -- Supprimer tous les ESP
-        clearAllESP()
+        -- Désactiver les collisions
+        for _, part in pairs(playerChar:GetDescendants()) do
+            if part:IsA("BasePart") then
+                part.CanCollide = false
+                print("[MOVE] 🔧 Collision désactivée pour:", part.Name)
+            end
+        end
         
-        print("[ESP] ESP désactivé!")
+        -- Déplacement direct
+        local direction = (targetPos - humanoidRootPart.Position).Unit
+        local moveDistance = math.min(distance - 5, 50) -- Max 50 studs par step
+        local newPos = humanoidRootPart.Position + (direction * moveDistance)
+        
+        print(string.format("[MOVE] 📍 Déplacement vers: %s", tostring(newPos)))
+        
+        humanoidRootPart.CFrame = CFrame.new(newPos)
+        
+        -- Réactiver les collisions après 2 secondes
+        task.wait(2)
+        for _, part in pairs(playerChar:GetDescendants()) do
+            if part:IsA("BasePart") then
+                part.CanCollide = true
+            end
+        end
+        print("[MOVE] ✓ NoClip désactivé, collisions réactivées")
         
         game:GetService("StarterGui"):SetCore("SendNotification", {
-            Title = "ESP Ennemis";
-            Text = "Désactivé";
+            Title = "NoClip";
+            Text = "Déplacé à travers les murs!";
             Duration = 2;
         })
     end
+    
+    print("========== FIN TEST ==========")
 end
 
 -- Fonction pour afficher/cacher le menu avec animation
