@@ -1,13 +1,11 @@
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
-local TweenService = game:GetService("TweenService")
 
 local player = Players.LocalPlayer
 local isMoving = false
 local screenGui = nil
 local mainFrame = nil
-local direction = nil
 
 local TOGGLE_KEY = Enum.KeyCode.Insert
 
@@ -15,7 +13,7 @@ function createGUI()
     if screenGui then screenGui:Destroy() end
     
     screenGui = Instance.new("ScreenGui")
-    screenGui.Name = "SimpleMoveV3"
+    screenGui.Name = "SimpleMoveV4"
     screenGui.Parent = player.PlayerGui
     
     mainFrame = Instance.new("Frame")
@@ -30,7 +28,7 @@ function createGUI()
     title.Size = UDim2.new(1, 0, 0, 30)
     title.Position = UDim2.new(0, 0, 0, 0)
     title.BackgroundTransparency = 1
-    title.Text = "SIMPLE MOVE V3"
+    title.Text = "SIMPLE MOVE V4"
     title.TextColor3 = Color3.fromRGB(255, 255, 255)
     title.TextSize = 16
     title.Font = Enum.Font.GothamBold
@@ -57,82 +55,38 @@ function createGUI()
     statusLabel.Parent = mainFrame
     
     toggleBtn.MouseButton1Click:Connect(function()
-        if isMoving then
-            isMoving = false
-            toggleBtn.Text = "AVANCER"
-            statusLabel.Text = "ARRÊTÉ"
-            statusLabel.TextColor3 = Color3.fromRGB(255, 0, 0)
-        else
-            isMoving = true
-            toggleBtn.Text = "ARRÊTER"
-            statusLabel.Text = "EN COURS"
-            statusLabel.TextColor3 = Color3.fromRGB(0, 255, 0)
-            startMoving()
-        end
+        toggleMove()
     end)
 end
 
+function toggleMove()
+    isMoving = not isMoving
+    if isMoving then
+        print("▶️ Avance activée")
+        toggleBtn.Text = "ARRÊTER"
+        statusLabel.Text = "EN COURS"
+        statusLabel.TextColor3 = Color3.fromRGB(0, 255, 0)
+    else
+        print("⏹️ Avance stoppée")
+        toggleBtn.Text = "AVANCER"
+        statusLabel.Text = "ARRÊTÉ"
+        statusLabel.TextColor3 = Color3.fromRGB(255, 0, 0)
+    end
+end
+
 function startMoving()
-    local playerChar = player.Character
-    if not playerChar or not playerChar:FindFirstChild("HumanoidRootPart") then
-        print("❌ Personnage non trouvé")
-        return
-    end
-    
-    local humanoid = playerChar:FindFirstChild("Humanoid")
-    if not humanoid then
-        print("❌ Humanoid non trouvé")
-        return
-    end
-    
-    local humanoidRootPart = playerChar.HumanoidRootPart
-    local startPos = humanoidRootPart.Position
-    direction = humanoidRootPart.CFrame.LookVector
-    
-    print("✅ Démarrage mouvement en ligne droite")
-    print(string.format("📍 Position départ: %.1f, %.1f, %.1f", startPos.X, startPos.Y, startPos.Z))
-    print(string.format("🧭 Direction: %.2f, %.2f, %.2f", direction.X, direction.Y, direction.Z))
-    
-    humanoid.WalkSpeed = 16
-    humanoid.JumpPower = 50
-    
-    local function moveForward()
-        if not isMoving then 
-            print("⏹️ Arrêt demandé")
-            return 
+    local char = player.Character or player.CharacterAdded:Wait()
+    local humanoid = char:WaitForChild("Humanoid")
+    local root = char:WaitForChild("HumanoidRootPart")
+
+    print("✅ Démarrage déplacement en ligne droite")
+
+    RunService.Heartbeat:Connect(function()
+        if isMoving and humanoid and root then
+            local forward = root.CFrame.LookVector
+            humanoid:Move(forward, false)
         end
-
-        local playerChar = player.Character
-        if not playerChar or not playerChar:FindFirstChild("HumanoidRootPart") then return end
-        local humanoid = playerChar:FindFirstChild("Humanoid")
-        local humanoidRootPart = playerChar.HumanoidRootPart
-
-        local currentPos = humanoidRootPart.Position
-        local flatDirection = Vector3.new(direction.X, 0, direction.Z).Unit  -- Y=0 pour pas descendre dans le sol
-        local targetPos = currentPos + (flatDirection * 5)
-
-        print(string.format("🎯 Cible: %.1f, %.1f, %.1f", targetPos.X, targetPos.Y, targetPos.Z))
-        humanoid:MoveTo(targetPos)
-        print("🚶 MoveTo appelé")
-
-        -- Attendre que le déplacement soit terminé avant de continuer
-        humanoid.MoveToFinished:Wait()
-
-        -- Vérifier la distance parcourue
-        local newPos = humanoidRootPart.Position
-        local distance = (newPos - currentPos).Magnitude
-        print(string.format("📏 Distance parcourue: %.1fm", distance))
-
-        if distance < 0.5 then
-            print("⚠️ Bloqué ou aucune avancée détectée")
-            isMoving = false
-            return
-        end
-
-        moveForward()
-    end
-    
-    moveForward()
+    end)
 end
 
 function makeDraggable(frame)
@@ -175,4 +129,6 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
     end
 end)
 
-print("Simple Move V3 chargé! Appuie sur INSERT pour toggle")
+startMoving()
+
+print("Simple Move V4 chargé! Appuie sur INSERT pour toggle")
