@@ -121,10 +121,14 @@ function startMoving()
 
     print("✅ Démarrage déplacement en ligne droite")
 
-    RunService.Heartbeat:Connect(function()
+    RunService.RenderStepped:Connect(function()
         if isMoving and humanoid and root then
             local forward = root.CFrame.LookVector
-            humanoid:Move(forward, false)
+            humanoid:Move(forward, true) -- true = relativeToCamera forcé
+            
+            -- Debug pour vérifier
+            print(("isMoving=%s | Humanoid state=%s | WalkSpeed=%.1f")
+                :format(tostring(isMoving), tostring(humanoid:GetState()), humanoid.WalkSpeed))
         end
     end)
 end
