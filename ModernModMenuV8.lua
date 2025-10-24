@@ -35,7 +35,7 @@ function createGUI()
     if screenGui then screenGui:Destroy() end
     
     screenGui = Instance.new("ScreenGui")
-    screenGui.Name = "ModernModMenuV8"
+    screenGui.Name = "ModernModMenuV9"
     screenGui.Parent = player.PlayerGui
     
     -- Main container avec design moderne
@@ -89,7 +89,7 @@ function createGUI()
     title.Size = UDim2.new(1, -50, 1, 0)
     title.Position = UDim2.new(0, 20, 0, 0)
     title.BackgroundTransparency = 1
-    title.Text = "MODERN MOD V8"
+    title.Text = "MODERN MOD V9"
     title.TextColor3 = Color3.fromRGB(255, 255, 255)
     title.TextSize = 18
     title.Font = Enum.Font.GothamBold
@@ -1116,4 +1116,4 @@ function exploreRemotes()
     print("🔍 ========== FIN EXPLORATION REMOTES ==========")
 end
 
-print("Modern Mod Menu V8 chargé! Nouvelles fonctionnalités: Level, Enemies, Modules, Remotes")
+print("Modern Mod Menu V9 chargé! Nouvelles fonctionnalités: Level, Enemies, Modules, Remotes")
