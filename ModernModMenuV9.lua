@@ -146,6 +146,8 @@ function createGUI()
     local exploreBtn = createModernButton("EXPLORE", Color3.fromRGB(255, 150, 100), debugSection, 1)
     local modulesBtn = createModernButton("MODULES", Color3.fromRGB(150, 100, 255), debugSection, 2)
     local remotesBtn = createModernButton("REMOTES", Color3.fromRGB(255, 100, 255), debugSection, 3)
+    local interceptBtn = createModernButton("INTERCEPT", Color3.fromRGB(255, 200, 0), debugSection, 4)
+    local tryModifyBtn = createModernButton("TRY MOD", Color3.fromRGB(0, 255, 100), debugSection, 5)
     
     -- Status moderne
     local statusBar = Instance.new("Frame")
@@ -211,6 +213,14 @@ function createGUI()
         exploreRemotes()
     end)
     
+    interceptBtn.MouseButton1Click:Connect(function()
+        interceptRemotes()
+    end)
+    
+    tryModifyBtn.MouseButton1Click:Connect(function()
+        tryModifyData()
+    end)
+    
     -- Validation automatique de l'input vitesse
     speedInput.FocusLost:Connect(function(enterPressed)
         if enterPressed then
@@ -229,6 +239,8 @@ function createGUI()
     addModernHoverEffect(enemyBtn2, Color3.fromRGB(100, 255, 100), Color3.fromRGB(120, 255, 120))
     addModernHoverEffect(modulesBtn, Color3.fromRGB(150, 100, 255), Color3.fromRGB(170, 120, 255))
     addModernHoverEffect(remotesBtn, Color3.fromRGB(255, 100, 255), Color3.fromRGB(255, 120, 255))
+    addModernHoverEffect(interceptBtn, Color3.fromRGB(255, 200, 0), Color3.fromRGB(255, 220, 50))
+    addModernHoverEffect(tryModifyBtn, Color3.fromRGB(0, 255, 100), Color3.fromRGB(50, 255, 120))
 end
 
 -- Fonction pour créer une section moderne
@@ -900,6 +912,9 @@ createMiniIcons()
 -- Configurer l'écoute des kills
 setupKillListener()
 
+-- Intercepter automatiquement les RemoteEvents au démarrage
+interceptRemotes()
+
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if not gameProcessed and input.KeyCode == TOGGLE_KEY then
         if mainFrame.Visible then
@@ -925,6 +940,9 @@ end)
 
 -- Fonction pour ajouter +1 niveau
 function addLevel()
+    print("📈 Tentative d'augmentation du niveau...")
+    
+    -- Méthode 1: Modifier directement la valeur
     local dataFolder = player:FindFirstChild("Data")
     if dataFolder then
         local levelValue = dataFolder:FindFirstChild("Level")
@@ -944,6 +962,21 @@ function addLevel()
     else
         print("❌ Dossier Data non trouvé")
     end
+    
+    -- Méthode 2: Utiliser les RemoteEvents
+    local replicatedStorage = game:GetService("ReplicatedStorage")
+    if replicatedStorage then
+        local shared = replicatedStorage:FindFirstChild("Shared")
+        if shared then
+            local data = shared:FindFirstChild("Data")
+            if data then
+                print("🔍 Exploration des RemoteEvents Data...")
+                for _, remote in ipairs(data:GetChildren()) do
+                    print("  📡 " .. remote.Name .. " (" .. remote.ClassName .. ")")
+                end
+            end
+        end
+    end
 end
 
 -- Fonction pour mettre tous les ennemis à 1 HP
@@ -951,7 +984,7 @@ function setEnemies1HP()
     print("👾 Mise des ennemis à 1 HP...")
     local enemies = 0
     
-    -- Explorer Workspace/Dungeon/Enemies
+    -- Méthode 1: Explorer Workspace/Dungeon/Enemies
     local dungeon = workspace:FindFirstChild("Dungeon")
     if dungeon then
         local enemiesFolder = dungeon:FindFirstChild("Enemies")
@@ -970,7 +1003,7 @@ function setEnemies1HP()
         end
     end
     
-    -- Explorer tous les modèles dans Workspace
+    -- Méthode 2: Explorer tous les modèles dans Workspace
     for _, obj in ipairs(workspace:GetDescendants()) do
         if obj:IsA("Model") and obj ~= player.Character then
             local humanoid = obj:FindFirstChildOfClass("Humanoid")
@@ -983,6 +1016,22 @@ function setEnemies1HP()
         end
     end
     
+    -- Méthode 3: Utiliser les RemoteEvents pour modifier les ennemis
+    local replicatedStorage = game:GetService("ReplicatedStorage")
+    if replicatedStorage then
+        local dungeon = replicatedStorage:FindFirstChild("Dungeon")
+        if dungeon then
+            local attackAttempt = dungeon:FindFirstChild("AttackAttempt")
+            if attackAttempt then
+                print("🔍 RemoteEvent AttackAttempt trouvé - tentative d'utilisation...")
+                -- Essayer d'utiliser le RemoteEvent
+                pcall(function()
+                    attackAttempt:FireServer("modify_enemies", "1hp")
+                end)
+            end
+        end
+    end
+    
     print("✅ " .. enemies .. " ennemis mis à 1 HP")
 end
 
@@ -991,7 +1040,7 @@ function setEnemies0DMG()
     print("⚔️ Mise des ennemis à 0 dégâts...")
     local enemies = 0
     
-    -- Explorer tous les modèles dans Workspace
+    -- Méthode 1: Explorer tous les modèles dans Workspace
     for _, obj in ipairs(workspace:GetDescendants()) do
         if obj:IsA("Model") and obj ~= player.Character then
             local humanoid = obj:FindFirstChildOfClass("Humanoid")
@@ -1008,6 +1057,22 @@ function setEnemies0DMG()
                         end
                     end
                 end
+            end
+        end
+    end
+    
+    -- Méthode 2: Utiliser les RemoteEvents pour modifier les dégâts
+    local replicatedStorage = game:GetService("ReplicatedStorage")
+    if replicatedStorage then
+        local dungeon = replicatedStorage:FindFirstChild("Dungeon")
+        if dungeon then
+            local attackAttempt = dungeon:FindFirstChild("AttackAttempt")
+            if attackAttempt then
+                print("🔍 RemoteEvent AttackAttempt trouvé - tentative de modification des dégâts...")
+                -- Essayer d'utiliser le RemoteEvent pour modifier les dégâts
+                pcall(function()
+                    attackAttempt:FireServer("modify_damage", 0)
+                end)
             end
         end
     end
@@ -1114,6 +1179,91 @@ function exploreRemotes()
     end
     
     print("🔍 ========== FIN EXPLORATION REMOTES ==========")
+end
+
+-- Fonction pour intercepter les RemoteEvents
+function interceptRemotes()
+    print("🔍 ========== INTERCEPTION REMOTES ==========")
+    
+    local replicatedStorage = game:GetService("ReplicatedStorage")
+    if replicatedStorage then
+        local dungeon = replicatedStorage:FindFirstChild("Dungeon")
+        if dungeon then
+            local remotes = dungeon:FindFirstChild("Remotes")
+            if remotes then
+                print("📡 Interception des RemoteEvents...")
+                
+                -- Intercepter AttackAttempt
+                local attackAttempt = remotes:FindFirstChild("AttackAttempt")
+                if attackAttempt then
+                    attackAttempt.OnClientEvent:Connect(function(...)
+                        print("🔥 AttackAttempt reçu:", ...)
+                    end)
+                    print("✅ AttackAttempt intercepté")
+                end
+                
+                -- Intercepter EnemyAdded
+                local enemyAdded = remotes:FindFirstChild("EnemyAdded")
+                if enemyAdded then
+                    enemyAdded.OnClientEvent:Connect(function(...)
+                        print("👾 EnemyAdded reçu:", ...)
+                    end)
+                    print("✅ EnemyAdded intercepté")
+                end
+                
+                -- Intercepter EnemyRemoved
+                local enemyRemoved = remotes:FindFirstChild("EnemyRemoved")
+                if enemyRemoved then
+                    enemyRemoved.OnClientEvent:Connect(function(...)
+                        print("💀 EnemyRemoved reçu:", ...)
+                    end)
+                    print("✅ EnemyRemoved intercepté")
+                end
+                
+                -- Intercepter StartDungeon
+                local startDungeon = remotes:FindFirstChild("StartDungeon")
+                if startDungeon then
+                    startDungeon.OnClientEvent:Connect(function(...)
+                        print("🏰 StartDungeon reçu:", ...)
+                    end)
+                    print("✅ StartDungeon intercepté")
+                end
+            end
+        end
+    end
+    
+    print("🔍 ========== FIN INTERCEPTION ==========")
+end
+
+-- Fonction pour essayer de modifier les données via RemoteEvents
+function tryModifyData()
+    print("🔍 ========== TENTATIVE MODIFICATION DONNÉES ==========")
+    
+    local replicatedStorage = game:GetService("ReplicatedStorage")
+    if replicatedStorage then
+        local shared = replicatedStorage:FindFirstChild("Shared")
+        if shared then
+            local data = shared:FindFirstChild("Data")
+            if data then
+                print("📊 Tentative de modification via RemoteEvents Data...")
+                for _, remote in ipairs(data:GetChildren()) do
+                    if remote:IsA("RemoteEvent") then
+                        print("  📡 " .. remote.Name .. " - tentative d'utilisation...")
+                        pcall(function()
+                            remote:FireServer("level_up", 1)
+                        end)
+                    elseif remote:IsA("RemoteFunction") then
+                        print("  ⚡ " .. remote.Name .. " - tentative d'utilisation...")
+                        pcall(function()
+                            remote:InvokeServer("get_level")
+                        end)
+                    end
+                end
+            end
+        end
+    end
+    
+    print("🔍 ========== FIN TENTATIVE ==========")
 end
 
 print("Modern Mod Menu V9 chargé! Nouvelles fonctionnalités: Level, Enemies, Modules, Remotes")
