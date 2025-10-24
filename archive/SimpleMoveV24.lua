@@ -466,3 +466,4 @@ task.spawn(function()
 end)
 
 print("Auto Move V24 chargé! Saut et descente automatiques améliorés")
+

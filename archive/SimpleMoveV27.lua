@@ -1,6 +1,7 @@
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
+local VirtualUser = game:GetService("VirtualUser")
 
 local player = Players.LocalPlayer
 local isMoving = false
@@ -20,13 +21,12 @@ local stuckTimer = 0
 -- Variables pour attaque
 local lastAttackTime = 0
 local ATTACK_COOLDOWN = 1.2 -- secondes
-local ATTACK_KEY = Enum.KeyCode.Two -- Touche fixe
 
 function createGUI()
     if screenGui then screenGui:Destroy() end
     
     screenGui = Instance.new("ScreenGui")
-    screenGui.Name = "SimpleMoveV25"
+    screenGui.Name = "SimpleMoveV27"
     screenGui.Parent = player.PlayerGui
     
     mainFrame = Instance.new("Frame")
@@ -56,7 +56,7 @@ function createGUI()
     title.Size = UDim2.new(1, -20, 0, 25)
     title.Position = UDim2.new(0, 15, 0, 8)
     title.BackgroundTransparency = 1
-    title.Text = "AUTO MOVE V25"
+    title.Text = "AUTO MOVE V27"
     title.TextColor3 = Color3.fromRGB(220, 220, 220)
     title.TextSize = 14
     title.Font = Enum.Font.GothamMedium
@@ -203,7 +203,7 @@ local function findBestDirection(root, rayParams)
     return bestDir, hitDetected
 end
 
--- Fonction d'attaque automatique améliorée
+-- Fonction d'attaque automatique avec VirtualUser
 local function autoAttack(target)
     if not target or not isValidTarget(target) then return end
 
@@ -216,13 +216,11 @@ local function autoAttack(target)
         lastAttackTime = tick()
         print(("⚔️ Attaque déclenchée sur %s (%.1fm)"):format(target.Name, distance))
 
-        -- Simulation touche fixe
+        -- Simulation de clic avec VirtualUser
         pcall(function()
-            if UserInputService then
-                UserInputService:FireInputEvent(Enum.UserInputType.Keyboard, ATTACK_KEY, true)
-                task.wait(0.1)
-                UserInputService:FireInputEvent(Enum.UserInputType.Keyboard, ATTACK_KEY, false)
-            end
+            VirtualUser:Button1Down(Vector2.new(0,0))
+            task.wait(0.05)
+            VirtualUser:Button1Up(Vector2.new(0,0))
         end)
     end
 
@@ -421,18 +419,19 @@ end)
 
 moveTowardTarget()
 
--- Boucle de spam automatique (toutes les 0.5s) - Touche 2 fixe
+-- Boucle de spam automatique (toutes les 0.5s) - VirtualUser pour clic gauche
 task.spawn(function()
     while true do
         if isMoving then
             pcall(function()
-                UserInputService:FireInputEvent(Enum.UserInputType.Keyboard, ATTACK_KEY, true)
+                VirtualUser:Button1Down(Vector2.new(0,0))
                 task.wait(0.05)
-                UserInputService:FireInputEvent(Enum.UserInputType.Keyboard, ATTACK_KEY, false)
+                VirtualUser:Button1Up(Vector2.new(0,0))
             end)
         end
         task.wait(0.5)
     end
 end)
 
-print("Auto Move V25 chargé! Spam touche 2 fixe + saut/descente corrigés")
+print("Auto Move V27 chargé! VirtualUser pour simulation de clic gauche")
+

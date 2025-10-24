@@ -379,7 +379,6 @@ function stopAll()
     local char = player.Character
     if char and char:FindFirstChild("Humanoid") then
         char.Humanoid.WalkSpeed = originalWalkSpeed
-        char.Humanoid.JumpPower = originalJumpPower
         char.Humanoid.MaxHealth = 100
         char.Humanoid.Health = 100
         print("🐌 Tout restauré")
@@ -411,7 +410,6 @@ function applySpeedOnce()
     local char = player.Character
     if char and char:FindFirstChild("Humanoid") then
         char.Humanoid.WalkSpeed = speedValue
-        char.Humanoid.JumpPower = speedValue * 2
         print("🚀 Vitesse forcée:", speedValue)
     end
 end
@@ -473,7 +471,6 @@ function showInfo()
     local char = player.Character
     if char and char:FindFirstChild("Humanoid") then
         print("👤 Vitesse actuelle: " .. char.Humanoid.WalkSpeed)
-        print("🦘 Saut actuel: " .. char.Humanoid.JumpPower)
         print("❤️ Santé actuelle: " .. char.Humanoid.Health)
     end
 end
@@ -525,7 +522,6 @@ task.spawn(function()
         if char and char:FindFirstChild("Humanoid") then
             if isSpeedActive then
                 char.Humanoid.WalkSpeed = speedValue
-                char.Humanoid.JumpPower = speedValue * 2
             end
             
             if isGodModeActive then

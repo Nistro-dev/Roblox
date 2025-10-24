@@ -20,12 +20,13 @@ local stuckTimer = 0
 -- Variables pour attaque
 local lastAttackTime = 0
 local ATTACK_COOLDOWN = 1.2 -- secondes
+local ATTACK_KEY = Enum.KeyCode.Two -- Touche fixe
 
 function createGUI()
     if screenGui then screenGui:Destroy() end
     
     screenGui = Instance.new("ScreenGui")
-    screenGui.Name = "SimpleMoveV26"
+    screenGui.Name = "SimpleMoveV25"
     screenGui.Parent = player.PlayerGui
     
     mainFrame = Instance.new("Frame")
@@ -55,7 +56,7 @@ function createGUI()
     title.Size = UDim2.new(1, -20, 0, 25)
     title.Position = UDim2.new(0, 15, 0, 8)
     title.BackgroundTransparency = 1
-    title.Text = "AUTO MOVE V26"
+    title.Text = "AUTO MOVE V25"
     title.TextColor3 = Color3.fromRGB(220, 220, 220)
     title.TextSize = 14
     title.Font = Enum.Font.GothamMedium
@@ -202,7 +203,7 @@ local function findBestDirection(root, rayParams)
     return bestDir, hitDetected
 end
 
--- Fonction d'attaque automatique avec simulation de clic
+-- Fonction d'attaque automatique améliorée
 local function autoAttack(target)
     if not target or not isValidTarget(target) then return end
 
@@ -215,29 +216,13 @@ local function autoAttack(target)
         lastAttackTime = tick()
         print(("⚔️ Attaque déclenchée sur %s (%.1fm)"):format(target.Name, distance))
 
-        -- Simulation de clic sur la touche 2
+        -- Simulation touche fixe
         pcall(function()
-            -- Méthode 1: Simulation directe de la touche
-            local keyCode = Enum.KeyCode.Two
-            local inputObject = {
-                KeyCode = keyCode,
-                UserInputType = Enum.UserInputType.Keyboard,
-                UserInputState = Enum.UserInputState.Begin
-            }
-            
-            -- Déclencher l'événement
-            UserInputService:FireInputEvent(inputObject)
-            
-            -- Attendre un peu puis relâcher
-            task.wait(0.1)
-            
-            local inputObjectEnd = {
-                KeyCode = keyCode,
-                UserInputType = Enum.UserInputType.Keyboard,
-                UserInputState = Enum.UserInputState.End
-            }
-            
-            UserInputService:FireInputEvent(inputObjectEnd)
+            if UserInputService then
+                UserInputService:FireInputEvent(Enum.UserInputType.Keyboard, ATTACK_KEY, true)
+                task.wait(0.1)
+                UserInputService:FireInputEvent(Enum.UserInputType.Keyboard, ATTACK_KEY, false)
+            end
         end)
     end
 
@@ -436,32 +421,19 @@ end)
 
 moveTowardTarget()
 
--- Boucle de spam automatique (toutes les 0.5s) - Simulation de clic améliorée
+-- Boucle de spam automatique (toutes les 0.5s) - Touche 2 fixe
 task.spawn(function()
     while true do
         if isMoving then
             pcall(function()
-                local keyCode = Enum.KeyCode.Two
-                local inputObject = {
-                    KeyCode = keyCode,
-                    UserInputType = Enum.UserInputType.Keyboard,
-                    UserInputState = Enum.UserInputState.Begin
-                }
-                
-                UserInputService:FireInputEvent(inputObject)
+                UserInputService:FireInputEvent(Enum.UserInputType.Keyboard, ATTACK_KEY, true)
                 task.wait(0.05)
-                
-                local inputObjectEnd = {
-                    KeyCode = keyCode,
-                    UserInputType = Enum.UserInputType.Keyboard,
-                    UserInputState = Enum.UserInputState.End
-                }
-                
-                UserInputService:FireInputEvent(inputObjectEnd)
+                UserInputService:FireInputEvent(Enum.UserInputType.Keyboard, ATTACK_KEY, false)
             end)
         end
         task.wait(0.5)
     end
 end)
 
-print("Auto Move V26 chargé! Simulation de clic améliorée pour touche 2")
+print("Auto Move V25 chargé! Spam touche 2 fixe + saut/descente corrigés")
+

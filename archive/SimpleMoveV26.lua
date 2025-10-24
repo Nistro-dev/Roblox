@@ -20,17 +20,16 @@ local stuckTimer = 0
 -- Variables pour attaque
 local lastAttackTime = 0
 local ATTACK_COOLDOWN = 1.2 -- secondes
-local attackKey = Enum.KeyCode.Two -- valeur par défaut
 
 function createGUI()
     if screenGui then screenGui:Destroy() end
     
     screenGui = Instance.new("ScreenGui")
-    screenGui.Name = "SimpleMoveV23"
+    screenGui.Name = "SimpleMoveV26"
     screenGui.Parent = player.PlayerGui
     
     mainFrame = Instance.new("Frame")
-    mainFrame.Size = UDim2.new(0, 320, 0, 120)
+    mainFrame.Size = UDim2.new(0, 280, 0, 80)
     mainFrame.Position = UDim2.new(0, 20, 0, 20)
     mainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
     mainFrame.BorderSizePixel = 0
@@ -56,7 +55,7 @@ function createGUI()
     title.Size = UDim2.new(1, -20, 0, 25)
     title.Position = UDim2.new(0, 15, 0, 8)
     title.BackgroundTransparency = 1
-    title.Text = "AUTO MOVE V23"
+    title.Text = "AUTO MOVE V26"
     title.TextColor3 = Color3.fromRGB(220, 220, 220)
     title.TextSize = 14
     title.Font = Enum.Font.GothamMedium
@@ -88,36 +87,6 @@ function createGUI()
     statusLabel.Font = Enum.Font.Gotham
     statusLabel.TextXAlignment = Enum.TextXAlignment.Left
     statusLabel.Parent = mainFrame
-    
-    -- Sélecteur de touche d'attaque
-    local attackDropdown = Instance.new("TextButton")
-    attackDropdown.Size = UDim2.new(0, 120, 0, 25)
-    attackDropdown.Position = UDim2.new(0, 15, 0, 75)
-    attackDropdown.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-    attackDropdown.BorderSizePixel = 0
-    attackDropdown.Text = "Attack: 2"
-    attackDropdown.TextColor3 = Color3.new(1,1,1)
-    attackDropdown.Font = Enum.Font.Gotham
-    attackDropdown.TextSize = 12
-    attackDropdown.Parent = mainFrame
-    
-    local attackCorner = Instance.new("UICorner")
-    attackCorner.CornerRadius = UDim.new(0, 6)
-    attackCorner.Parent = attackDropdown
-    
-    attackDropdown.MouseButton1Click:Connect(function()
-        print("🟡 Appuie sur une touche pour définir l'attaque...")
-        attackDropdown.Text = "Press any key..."
-        local conn
-        conn = UserInputService.InputBegan:Connect(function(input)
-            if input.UserInputType == Enum.UserInputType.Keyboard then
-                attackKey = input.KeyCode
-                attackDropdown.Text = "Attack: " .. tostring(input.KeyCode):gsub("Enum.KeyCode.", "")
-                conn:Disconnect()
-                print("✅ Nouvelle touche d'attaque :", attackKey)
-            end
-        end)
-    end)
     
     local closeBtn = Instance.new("TextButton")
     closeBtn.Size = UDim2.new(0, 20, 0, 20)
@@ -233,7 +202,7 @@ local function findBestDirection(root, rayParams)
     return bestDir, hitDetected
 end
 
--- Fonction d'attaque automatique améliorée
+-- Fonction d'attaque automatique avec simulation de clic
 local function autoAttack(target)
     if not target or not isValidTarget(target) then return end
 
@@ -246,13 +215,29 @@ local function autoAttack(target)
         lastAttackTime = tick()
         print(("⚔️ Attaque déclenchée sur %s (%.1fm)"):format(target.Name, distance))
 
-        -- Simulation touche configurée
+        -- Simulation de clic sur la touche 2
         pcall(function()
-            if UserInputService then
-                UserInputService:FireInputEvent(Enum.UserInputType.Keyboard, attackKey, true)
-                task.wait(0.1)
-                UserInputService:FireInputEvent(Enum.UserInputType.Keyboard, attackKey, false)
-            end
+            -- Méthode 1: Simulation directe de la touche
+            local keyCode = Enum.KeyCode.Two
+            local inputObject = {
+                KeyCode = keyCode,
+                UserInputType = Enum.UserInputType.Keyboard,
+                UserInputState = Enum.UserInputState.Begin
+            }
+            
+            -- Déclencher l'événement
+            UserInputService:FireInputEvent(inputObject)
+            
+            -- Attendre un peu puis relâcher
+            task.wait(0.1)
+            
+            local inputObjectEnd = {
+                KeyCode = keyCode,
+                UserInputType = Enum.UserInputType.Keyboard,
+                UserInputState = Enum.UserInputState.End
+            }
+            
+            UserInputService:FireInputEvent(inputObjectEnd)
         end)
     end
 
@@ -311,21 +296,36 @@ function moveTowardTarget()
             if target and target:FindFirstChild("HumanoidRootPart") then
                 local toTarget = (target.HumanoidRootPart.Position - root.Position).Unit
                 
-                -- Détection d'obstacle avec saut automatique amélioré
+                -- Détection d'obstacle pour saut amélioré (hauteur 1-8 studs)
                 local rayOrigin = root.Position + Vector3.new(0, 2, 0)
                 local rayDir = toTarget * 5
                 local hit = workspace:Raycast(rayOrigin, rayDir, rayParams)
                 
                 if hit then
                     local obstacleHeight = hit.Position.Y - root.Position.Y
-                    
-                    if obstacleHeight > 1 and obstacleHeight < 6 then
-                        print(("🟩 Petit obstacle détecté (%.1fm), saut !"):format(obstacleHeight))
+                    if obstacleHeight > 1 and obstacleHeight < 8 then
                         humanoid.Jump = true
-                    elseif obstacleHeight >= 6 then
-                        print(("🧱 Gros obstacle détecté (%.1fm), contournement."):format(obstacleHeight))
+                        print(("🟩 Petit obstacle détecté (%.1fm), saut !"):format(obstacleHeight))
+                    elseif obstacleHeight >= 8 then
+                        -- contournement
                         local strafeDir = (math.random() < 0.5) and root.CFrame.RightVector or -root.CFrame.RightVector
                         humanoid:Move(Vector3.new(strafeDir.X, 0, strafeDir.Z), false)
+                        print(("🧱 Gros obstacle détecté (%.1fm), contournement."):format(obstacleHeight))
+                    end
+                end
+                
+                -- Vérification du sol sous les pieds pour descente
+                local downRay = workspace:Raycast(root.Position + Vector3.new(0,2,0), Vector3.new(0, -8, 0), rayParams)
+                if downRay then
+                    if downRay.Distance > 6 then
+                        -- sol bas → permet avancer
+                        humanoid:Move(Vector3.new(toTarget.X, 0, toTarget.Z), false)
+                        print("⬇️ Descente automatique détectée")
+                    elseif downRay.Distance < 2 then
+                        -- sol très proche ou rebord → reculer ou ajuster
+                        humanoid:Move(-root.CFrame.LookVector, false)
+                        task.wait(0.2)
+                        print("🔄 Recul pour éviter rebord")
                     end
                 end
                 
@@ -436,18 +436,33 @@ end)
 
 moveTowardTarget()
 
--- Boucle de spam automatique (toutes les 0.5s)
+-- Boucle de spam automatique (toutes les 0.5s) - Simulation de clic améliorée
 task.spawn(function()
     while true do
         if isMoving then
             pcall(function()
-                UserInputService:FireInputEvent(Enum.UserInputType.Keyboard, attackKey, true)
+                local keyCode = Enum.KeyCode.Two
+                local inputObject = {
+                    KeyCode = keyCode,
+                    UserInputType = Enum.UserInputType.Keyboard,
+                    UserInputState = Enum.UserInputState.Begin
+                }
+                
+                UserInputService:FireInputEvent(inputObject)
                 task.wait(0.05)
-                UserInputService:FireInputEvent(Enum.UserInputType.Keyboard, attackKey, false)
+                
+                local inputObjectEnd = {
+                    KeyCode = keyCode,
+                    UserInputType = Enum.UserInputType.Keyboard,
+                    UserInputState = Enum.UserInputState.End
+                }
+                
+                UserInputService:FireInputEvent(inputObjectEnd)
             end)
         end
         task.wait(0.5)
     end
 end)
 
-print("Auto Move V23 chargé! Touche d'attaque configurable + spam automatique")
+print("Auto Move V26 chargé! Simulation de clic améliorée pour touche 2")
+
