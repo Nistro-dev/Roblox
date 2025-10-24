@@ -35,12 +35,12 @@ function createGUI()
     if screenGui then screenGui:Destroy() end
     
     screenGui = Instance.new("ScreenGui")
-    screenGui.Name = "ModernModMenuV7"
+    screenGui.Name = "ModernModMenuV8"
     screenGui.Parent = player.PlayerGui
     
     -- Main container avec design moderne
     mainFrame = Instance.new("Frame")
-    mainFrame.Size = UDim2.new(0, 300, 0, 200)
+    mainFrame.Size = UDim2.new(0, 300, 0, 280)
     mainFrame.Position = UDim2.new(0, 20, 0, 20)
     mainFrame.BackgroundColor3 = Color3.fromRGB(12, 12, 12)
     mainFrame.BorderSizePixel = 0
@@ -89,7 +89,7 @@ function createGUI()
     title.Size = UDim2.new(1, -50, 1, 0)
     title.Position = UDim2.new(0, 20, 0, 0)
     title.BackgroundTransparency = 1
-    title.Text = "MODERN MOD V7"
+    title.Text = "MODERN MOD V8"
     title.TextColor3 = Color3.fromRGB(255, 255, 255)
     title.TextSize = 18
     title.Font = Enum.Font.GothamBold
@@ -923,4 +923,197 @@ task.spawn(function()
     end
 end)
 
-print("Modern Mod Menu V7 chargé! God Mode avec interception des dégâts")
+-- Fonction pour ajouter +1 niveau
+function addLevel()
+    local dataFolder = player:FindFirstChild("Data")
+    if dataFolder then
+        local levelValue = dataFolder:FindFirstChild("Level")
+        if levelValue and levelValue:IsA("IntValue") then
+            local currentLevel = levelValue.Value
+            levelValue.Value = currentLevel + 1
+            print("📈 Niveau augmenté: " .. currentLevel .. " → " .. levelValue.Value)
+            
+            -- Mettre à jour l'affichage
+            local levelDisplay = mainFrame:FindFirstChild("levelDisplay")
+            if levelDisplay then
+                levelDisplay.Text = "LVL: " .. levelValue.Value
+            end
+        else
+            print("❌ Level IntValue non trouvé")
+        end
+    else
+        print("❌ Dossier Data non trouvé")
+    end
+end
+
+-- Fonction pour mettre tous les ennemis à 1 HP
+function setEnemies1HP()
+    print("👾 Mise des ennemis à 1 HP...")
+    local enemies = 0
+    
+    -- Explorer Workspace/Dungeon/Enemies
+    local dungeon = workspace:FindFirstChild("Dungeon")
+    if dungeon then
+        local enemiesFolder = dungeon:FindFirstChild("Enemies")
+        if enemiesFolder then
+            for _, enemy in ipairs(enemiesFolder:GetChildren()) do
+                if enemy:IsA("Model") then
+                    local humanoid = enemy:FindFirstChildOfClass("Humanoid")
+                    if humanoid then
+                        humanoid.MaxHealth = 1
+                        humanoid.Health = 1
+                        enemies = enemies + 1
+                        print("  👾 " .. enemy.Name .. " → 1 HP")
+                    end
+                end
+            end
+        end
+    end
+    
+    -- Explorer tous les modèles dans Workspace
+    for _, obj in ipairs(workspace:GetDescendants()) do
+        if obj:IsA("Model") and obj ~= player.Character then
+            local humanoid = obj:FindFirstChildOfClass("Humanoid")
+            if humanoid and humanoid.Health > 1 then
+                humanoid.MaxHealth = 1
+                humanoid.Health = 1
+                enemies = enemies + 1
+                print("  👾 " .. obj.Name .. " → 1 HP")
+            end
+        end
+    end
+    
+    print("✅ " .. enemies .. " ennemis mis à 1 HP")
+end
+
+-- Fonction pour mettre tous les ennemis à 0 dégâts
+function setEnemies0DMG()
+    print("⚔️ Mise des ennemis à 0 dégâts...")
+    local enemies = 0
+    
+    -- Explorer tous les modèles dans Workspace
+    for _, obj in ipairs(workspace:GetDescendants()) do
+        if obj:IsA("Model") and obj ~= player.Character then
+            local humanoid = obj:FindFirstChildOfClass("Humanoid")
+            if humanoid then
+                -- Chercher des propriétés de dégâts
+                for _, child in ipairs(obj:GetChildren()) do
+                    if child:IsA("IntValue") or child:IsA("NumberValue") then
+                        if string.find(string.lower(child.Name), "damage") or 
+                           string.find(string.lower(child.Name), "dmg") or
+                           string.find(string.lower(child.Name), "attack") then
+                            child.Value = 0
+                            enemies = enemies + 1
+                            print("  ⚔️ " .. obj.Name .. "." .. child.Name .. " → 0")
+                        end
+                    end
+                end
+            end
+        end
+    end
+    
+    print("✅ " .. enemies .. " propriétés de dégâts mises à 0")
+end
+
+-- Fonction pour explorer les modules
+function exploreModules()
+    print("🔍 ========== EXPLORATION MODULES ==========")
+    
+    local replicatedStorage = game:GetService("ReplicatedStorage")
+    if replicatedStorage then
+        local dungeon = replicatedStorage:FindFirstChild("Dungeon")
+        if dungeon then
+            local modules = dungeon:FindFirstChild("Modules")
+            if modules then
+                print("📁 Modules trouvés dans Dungeon:")
+                local moduleChildren = modules:GetChildren()
+                for _, module in ipairs(moduleChildren) do
+                    print("  📄 " .. module.Name .. " (" .. module.ClassName .. ")")
+                    
+                    -- Explorer le contenu des modules
+                    if module:IsA("ModuleScript") then
+                        print("    🔧 ModuleScript détecté")
+                    elseif module:IsA("Folder") then
+                        local subModules = module:GetChildren()
+                        print("    📁 " .. #subModules .. " sous-modules")
+                        for i = 1, math.min(5, #subModules) do
+                            local subModule = subModules[i]
+                            print("      📄 " .. subModule.Name .. " (" .. subModule.ClassName .. ")")
+                        end
+                    end
+                end
+            else
+                print("❌ Dossier Modules non trouvé dans Dungeon")
+            end
+        else
+            print("❌ Dossier Dungeon non trouvé dans ReplicatedStorage")
+        end
+        
+        -- Explorer aussi Shared/Modules
+        local shared = replicatedStorage:FindFirstChild("Shared")
+        if shared then
+            local modules = shared:FindFirstChild("Modules")
+            if modules then
+                print("\n📁 Modules trouvés dans Shared:")
+                local moduleChildren = modules:GetChildren()
+                for _, module in ipairs(moduleChildren) do
+                    print("  📄 " .. module.Name .. " (" .. module.ClassName .. ")")
+                end
+            end
+        end
+    end
+    
+    print("🔍 ========== FIN EXPLORATION MODULES ==========")
+end
+
+-- Fonction pour explorer les remotes
+function exploreRemotes()
+    print("🔍 ========== EXPLORATION REMOTES ==========")
+    
+    local replicatedStorage = game:GetService("ReplicatedStorage")
+    if replicatedStorage then
+        local dungeon = replicatedStorage:FindFirstChild("Dungeon")
+        if dungeon then
+            local remotes = dungeon:FindFirstChild("Remotes")
+            if remotes then
+                print("📡 Remotes trouvés dans Dungeon:")
+                local remoteChildren = remotes:GetChildren()
+                for _, remote in ipairs(remoteChildren) do
+                    print("  📡 " .. remote.Name .. " (" .. remote.ClassName .. ")")
+                    
+                    if remote:IsA("RemoteEvent") then
+                        print("    🔥 RemoteEvent détecté")
+                    elseif remote:IsA("RemoteFunction") then
+                        print("    ⚡ RemoteFunction détecté")
+                    elseif remote:IsA("Folder") then
+                        local subRemotes = remote:GetChildren()
+                        print("    📁 " .. #subRemotes .. " sous-remotes")
+                        for i = 1, math.min(5, #subRemotes) do
+                            local subRemote = subRemotes[i]
+                            print("      📡 " .. subRemote.Name .. " (" .. subRemote.ClassName .. ")")
+                        end
+                    end
+                end
+            else
+                print("❌ Dossier Remotes non trouvé dans Dungeon")
+            end
+        end
+        
+        -- Explorer aussi Shared/Remotes
+        local shared = replicatedStorage:FindFirstChild("Shared")
+        if shared then
+            local remotes = shared:FindFirstChild("Remotes")
+            if remotes then
+                print("\n📡 Remotes trouvés dans Shared:")
+                local remoteChildren = remotes:GetChildren()
+                for _, remote in ipairs(remoteChildren) do
+                    print("  📡 " .. remote.Name .. " (" .. remote.ClassName .. ")")
+                end
+            end
+        end
+    end
+    
+    print("🔍 ========== FIN EXPLORATION REMOTES ==========")
+end
+
+print("Modern Mod Menu V8 chargé! Nouvelles fonctionnalités: Level, Enemies, Modules, Remotes")
