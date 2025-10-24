@@ -108,16 +108,12 @@ function createGUI()
     local speedSection = createModernSection("SPEED BOOST", 0, content)
     local speedInput = createModernInput("Vitesse", tostring(speedValue), speedSection, 0)
     local speedToggle = createModernToggle("SPEED", false, speedSection, 1)
+    local speedIndicator = createIndicator("SPEED", false, speedSection, 2)
     
     -- Section God Mode
     local godSection = createModernSection("GOD MODE", 1, content)
     local godToggle = createModernToggle("GOD", false, godSection, 0)
-    
-    -- Section Controls
-    local controlSection = createModernSection("CONTROLS", 2, content)
-    local forceBtn = createModernButton("FORCE ALL", Color3.fromRGB(0, 200, 100), controlSection, 0)
-    local stopBtn = createModernButton("STOP ALL", Color3.fromRGB(255, 80, 80), controlSection, 1)
-    local infoBtn = createModernButton("INFO", Color3.fromRGB(100, 150, 255), controlSection, 2)
+    local godIndicator = createIndicator("GOD", false, godSection, 1)
     
     -- Status moderne
     local statusBar = Instance.new("Frame")
@@ -155,18 +151,6 @@ function createGUI()
         toggleGodMode()
     end)
     
-    forceBtn.MouseButton1Click:Connect(function()
-        forceAll()
-    end)
-    
-    stopBtn.MouseButton1Click:Connect(function()
-        stopAll()
-    end)
-    
-    infoBtn.MouseButton1Click:Connect(function()
-        showInfo()
-    end)
-    
     -- Validation automatique de l'input vitesse
     speedInput.FocusLost:Connect(function(enterPressed)
         if enterPressed then
@@ -178,9 +162,6 @@ function createGUI()
     addModernHoverEffect(closeBtn, Color3.fromRGB(255, 60, 60), Color3.fromRGB(255, 100, 100))
     addModernHoverEffect(speedToggle, Color3.fromRGB(40, 40, 40), Color3.fromRGB(60, 60, 60))
     addModernHoverEffect(godToggle, Color3.fromRGB(40, 40, 40), Color3.fromRGB(60, 60, 60))
-    addModernHoverEffect(forceBtn, Color3.fromRGB(0, 200, 100), Color3.fromRGB(0, 250, 120))
-    addModernHoverEffect(stopBtn, Color3.fromRGB(255, 80, 80), Color3.fromRGB(255, 120, 120))
-    addModernHoverEffect(infoBtn, Color3.fromRGB(100, 150, 255), Color3.fromRGB(120, 170, 255))
 end
 
 -- Fonction pour créer une section moderne
@@ -265,24 +246,30 @@ function createModernToggle(text, initialState, parent, index)
     return toggle
 end
 
--- Fonction pour créer un bouton moderne
-function createModernButton(text, color, parent, index)
-    local button = Instance.new("TextButton")
-    button.Size = UDim2.new(0, 60, 0, 25)
-    button.Position = UDim2.new(0, 10 + index * 70, 0, 8)
-    button.BackgroundColor3 = color
-    button.BorderSizePixel = 0
-    button.Text = text
-    button.TextColor3 = Color3.fromRGB(255, 255, 255)
-    button.TextSize = 10
-    button.Font = Enum.Font.GothamBold
-    button.Parent = parent
+-- Fonction pour créer un indicateur
+function createIndicator(type, initialState, parent, index)
+    local indicator = Instance.new("Frame")
+    indicator.Size = UDim2.new(0, 60, 0, 25)
+    indicator.Position = UDim2.new(0, 10 + index * 80, 0, 8)
+    indicator.BackgroundColor3 = initialState and Color3.fromRGB(0, 200, 100) or Color3.fromRGB(60, 60, 60)
+    indicator.BorderSizePixel = 0
+    indicator.Parent = parent
     
-    local buttonCorner = Instance.new("UICorner")
-    buttonCorner.CornerRadius = UDim.new(0, 6)
-    buttonCorner.Parent = button
+    local indicatorCorner = Instance.new("UICorner")
+    indicatorCorner.CornerRadius = UDim.new(0, 6)
+    indicatorCorner.Parent = indicator
     
-    return button
+    local indicatorText = Instance.new("TextLabel")
+    indicatorText.Size = UDim2.new(1, 0, 1, 0)
+    indicatorText.Position = UDim2.new(0, 0, 0, 0)
+    indicatorText.BackgroundTransparency = 1
+    indicatorText.Text = initialState and "ACTIF" or "INACTIF"
+    indicatorText.TextColor3 = Color3.fromRGB(255, 255, 255)
+    indicatorText.TextSize = 11
+    indicatorText.Font = Enum.Font.GothamBold
+    indicatorText.Parent = indicator
+    
+    return indicator
 end
 
 -- Fonction pour les effets de hover modernes
@@ -314,6 +301,7 @@ end
 function toggleSpeed()
     isSpeedActive = not isSpeedActive
     local speedToggle = mainFrame:FindFirstChild("speedToggle")
+    local speedIndicator = mainFrame:FindFirstChild("speedIndicator")
     
     if isSpeedActive then
         print("🚀 Speed activé")
@@ -321,20 +309,30 @@ function toggleSpeed()
             speedToggle.Text = "SPEED ON"
             speedToggle.BackgroundColor3 = Color3.fromRGB(0, 200, 100)
         end
+        if speedIndicator then
+            speedIndicator.BackgroundColor3 = Color3.fromRGB(0, 200, 100)
+            speedIndicator:FindFirstChild("TextLabel").Text = "ACTIF"
+        end
     else
         print("⏹️ Speed désactivé")
         if speedToggle then 
             speedToggle.Text = "SPEED OFF"
             speedToggle.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
         end
+        if speedIndicator then
+            speedIndicator.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+            speedIndicator:FindFirstChild("TextLabel").Text = "INACTIF"
+        end
     end
     updateStatus()
+    updateMiniIcons()
 end
 
 -- Fonction pour activer/désactiver le god mode
 function toggleGodMode()
     isGodModeActive = not isGodModeActive
     local godToggle = mainFrame:FindFirstChild("godToggle")
+    local godIndicator = mainFrame:FindFirstChild("godIndicator")
     
     if isGodModeActive then
         print("🛡️ God Mode activé")
@@ -342,51 +340,85 @@ function toggleGodMode()
             godToggle.Text = "GOD ON"
             godToggle.BackgroundColor3 = Color3.fromRGB(255, 80, 80)
         end
+        if godIndicator then
+            godIndicator.BackgroundColor3 = Color3.fromRGB(255, 80, 80)
+            godIndicator:FindFirstChild("TextLabel").Text = "ACTIF"
+        end
     else
         print("⏹️ God Mode désactivé")
         if godToggle then 
             godToggle.Text = "GOD OFF"
             godToggle.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
         end
+        if godIndicator then
+            godIndicator.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+            godIndicator:FindFirstChild("TextLabel").Text = "INACTIF"
+        end
     end
     updateStatus()
+    updateMiniIcons()
 end
 
--- Fonction pour forcer tout
-function forceAll()
-    updateSpeedValue()
-    applySpeedOnce()
-    applyGodMode()
-    print("🔥 Tout forcé!")
+-- Fonction pour créer les mini icônes
+function createMiniIcons()
+    -- Mini icône Speed
+    local speedIcon = Instance.new("Frame")
+    speedIcon.Size = UDim2.new(0, 40, 0, 40)
+    speedIcon.Position = UDim2.new(1, -50, 1, -50)
+    speedIcon.BackgroundColor3 = Color3.fromRGB(0, 200, 100)
+    speedIcon.BorderSizePixel = 0
+    speedIcon.Visible = false
+    speedIcon.Parent = screenGui
+    
+    local speedIconCorner = Instance.new("UICorner")
+    speedIconCorner.CornerRadius = UDim.new(0, 8)
+    speedIconCorner.Parent = speedIcon
+    
+    local speedIconText = Instance.new("TextLabel")
+    speedIconText.Size = UDim2.new(1, 0, 1, 0)
+    speedIconText.Position = UDim2.new(0, 0, 0, 0)
+    speedIconText.BackgroundTransparency = 1
+    speedIconText.Text = "⚡"
+    speedIconText.TextColor3 = Color3.fromRGB(255, 255, 255)
+    speedIconText.TextSize = 20
+    speedIconText.Font = Enum.Font.GothamBold
+    speedIconText.Parent = speedIcon
+    
+    -- Mini icône God Mode
+    local godIcon = Instance.new("Frame")
+    godIcon.Size = UDim2.new(0, 40, 0, 40)
+    godIcon.Position = UDim2.new(1, -100, 1, -50)
+    godIcon.BackgroundColor3 = Color3.fromRGB(255, 80, 80)
+    godIcon.BorderSizePixel = 0
+    godIcon.Visible = false
+    godIcon.Parent = screenGui
+    
+    local godIconCorner = Instance.new("UICorner")
+    godIconCorner.CornerRadius = UDim.new(0, 8)
+    godIconCorner.Parent = godIcon
+    
+    local godIconText = Instance.new("TextLabel")
+    godIconText.Size = UDim2.new(1, 0, 1, 0)
+    godIconText.Position = UDim2.new(0, 0, 0, 0)
+    godIconText.BackgroundTransparency = 1
+    godIconText.Text = "🛡️"
+    godIconText.TextColor3 = Color3.fromRGB(255, 255, 255)
+    godIconText.TextSize = 20
+    godIconText.Font = Enum.Font.GothamBold
+    godIconText.Parent = godIcon
 end
 
--- Fonction pour arrêter tout
-function stopAll()
-    isSpeedActive = false
-    isGodModeActive = false
+-- Fonction pour mettre à jour les mini icônes
+function updateMiniIcons()
+    local speedIcon = screenGui:FindFirstChild("speedIcon")
+    local godIcon = screenGui:FindFirstChild("godIcon")
     
-    local char = player.Character
-    if char and char:FindFirstChild("Humanoid") then
-        char.Humanoid.WalkSpeed = originalWalkSpeed
-        char.Humanoid.MaxHealth = 100
-        char.Humanoid.Health = 100
-        print("🐌 Tout restauré")
+    if speedIcon then
+        speedIcon.Visible = isSpeedActive
     end
-    
-    -- Reset des boutons
-    local speedToggle = mainFrame:FindFirstChild("speedToggle")
-    local godToggle = mainFrame:FindFirstChild("godToggle")
-    
-    if speedToggle then 
-        speedToggle.Text = "SPEED OFF"
-        speedToggle.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+    if godIcon then
+        godIcon.Visible = isGodModeActive
     end
-    if godToggle then 
-        godToggle.Text = "GOD OFF"
-        godToggle.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-    end
-    
-    updateStatus()
 end
 
 -- Fonction pour appliquer la vitesse une seule fois
@@ -426,18 +458,21 @@ function updateStatus()
     end
 end
 
--- Fonction pour afficher les infos
-function showInfo()
-    print("📊 MODERN MOD MENU")
-    print("🎛️ Vitesse configurée: " .. speedValue)
-    print("🚀 Speed: " .. (isSpeedActive and "ACTIF" or "INACTIF"))
-    print("🛡️ God Mode: " .. (isGodModeActive and "ACTIF" or "INACTIF"))
-    print("⌨️ Touches: INSERT = Menu")
-    
-    local char = player.Character
-    if char and char:FindFirstChild("Humanoid") then
-        print("👤 Vitesse actuelle: " .. char.Humanoid.WalkSpeed)
-        print("❤️ Santé actuelle: " .. char.Humanoid.Health)
+-- Fonction pour mettre à jour le status
+function updateStatus()
+    local statusLabel = mainFrame:FindFirstChild("statusLabel")
+    if statusLabel then
+        local status = "Status: "
+        if isSpeedActive and isGodModeActive then
+            status = status .. "SPEED + GOD ACTIVE"
+        elseif isSpeedActive then
+            status = status .. "SPEED ACTIVE"
+        elseif isGodModeActive then
+            status = status .. "GOD ACTIVE"
+        else
+            status = status .. "ALL INACTIVE"
+        end
+        statusLabel.Text = status
     end
 end
 
@@ -470,6 +505,9 @@ end
 
 createGUI()
 makeDraggable(mainFrame)
+
+-- Créer les mini icônes en bas à droite
+createMiniIcons()
 
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if not gameProcessed and input.KeyCode == TOGGLE_KEY then
