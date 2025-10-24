@@ -15,6 +15,8 @@ local TOGGLE_KEY = Enum.KeyCode.Insert
 
 -- Variables pour vitesse
 local originalWalkSpeed = 16
+local originalMaxHealth = 100
+local originalHealth = 100
 
 function createGUI()
     if screenGui then screenGui:Destroy() end
@@ -115,6 +117,10 @@ function createGUI()
     local godToggle = createModernToggle("GOD", false, godSection, 0)
     local godIndicator = createIndicator("GOD", false, godSection, 1)
     
+    -- Section Debug
+    local debugSection = createModernSection("DEBUG", 2, content)
+    local debugBtn = createModernButton("INFO", Color3.fromRGB(100, 150, 255), debugSection, 0)
+    
     -- Status moderne
     local statusBar = Instance.new("Frame")
     statusBar.Size = UDim2.new(1, 0, 0, 30)
@@ -151,6 +157,10 @@ function createGUI()
         toggleGodMode()
     end)
     
+    debugBtn.MouseButton1Click:Connect(function()
+        showDebugInfo()
+    end)
+    
     -- Validation automatique de l'input vitesse
     speedInput.FocusLost:Connect(function(enterPressed)
         if enterPressed then
@@ -162,6 +172,7 @@ function createGUI()
     addModernHoverEffect(closeBtn, Color3.fromRGB(255, 60, 60), Color3.fromRGB(255, 100, 100))
     addModernHoverEffect(speedToggle, Color3.fromRGB(40, 40, 40), Color3.fromRGB(60, 60, 60))
     addModernHoverEffect(godToggle, Color3.fromRGB(40, 40, 40), Color3.fromRGB(60, 60, 60))
+    addModernHoverEffect(debugBtn, Color3.fromRGB(100, 150, 255), Color3.fromRGB(120, 170, 255))
 end
 
 -- Fonction pour créer une section moderne
@@ -354,6 +365,7 @@ function toggleGodMode()
             godIndicator.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
             godIndicator:FindFirstChild("TextLabel").Text = "INACTIF"
         end
+        restoreHealth()
     end
     updateStatus()
     updateMiniIcons()
@@ -434,12 +446,27 @@ end
 function applyGodMode()
     local char = player.Character
     if char and char:FindFirstChild("Humanoid") then
+        -- Sauvegarder les valeurs originales si pas déjà fait
+        if originalMaxHealth == 100 then
+            originalMaxHealth = char.Humanoid.MaxHealth
+            originalHealth = char.Humanoid.Health
+        end
         char.Humanoid.MaxHealth = math.huge
         char.Humanoid.Health = math.huge
         print("🛡️ God Mode appliqué")
     end
 end
 
+-- Fonction pour restaurer la santé normale
+function restoreHealth()
+    local char = player.Character
+    if char and char:FindFirstChild("Humanoid") then
+        char.Humanoid.MaxHealth = originalMaxHealth
+        char.Humanoid.Health = originalHealth
+        print("❤️ Santé restaurée:", originalHealth .. "/" .. originalMaxHealth)
+    end
+end
+
 -- Fonction pour mettre à jour le status
 function updateStatus()
     local statusLabel = mainFrame:FindFirstChild("statusLabel")
@@ -474,6 +501,100 @@ function updateStatus()
         end
         statusLabel.Text = status
     end
+end
+
+-- Fonction de debug complète
+function showDebugInfo()
+    print("🔍 ========== DEBUG INFO ==========")
+    
+    local char = player.Character
+    if char and char:FindFirstChild("Humanoid") then
+        local humanoid = char.Humanoid
+        print("👤 PERSONNAGE:")
+        print("  🚀 Vitesse: " .. humanoid.WalkSpeed)
+        print("  ❤️ Santé: " .. humanoid.Health .. "/" .. humanoid.MaxHealth)
+        print("  🦘 Saut: " .. humanoid.JumpPower)
+        print("  🏃 État: " .. tostring(humanoid:GetState()))
+    else
+        print("❌ Personnage non trouvé")
+    end
+    
+    print("\n🎒 INVENTAIRE:")
+    local backpack = player:FindFirstChild("Backpack")
+    if backpack then
+        local tools = backpack:GetChildren()
+        print("  📦 Outils dans le sac: " .. #tools)
+        for _, tool in ipairs(tools) do
+            if tool:IsA("Tool") then
+                print("    🔧 " .. tool.Name)
+            end
+        end
+    end
+    
+    print("\n⚔️ ARMES ÉQUIPÉES:")
+    if char then
+        local tools = char:GetChildren()
+        for _, tool in ipairs(tools) do
+            if tool:IsA("Tool") then
+                print("    ⚔️ " .. tool.Name)
+                -- Vérifier les propriétés de l'arme
+                if tool:FindFirstChild("Damage") then
+                    print("      💥 Dégâts: " .. tool.Damage.Value)
+                end
+                if tool:FindFirstChild("Cooldown") then
+                    print("      ⏱️ Cooldown: " .. tool.Cooldown.Value)
+                end
+            end
+        end
+    end
+    
+    print("\n📊 STATISTIQUES:")
+    print("  🎯 Niveau: " .. (player.leaderstats and player.leaderstats.Level and player.leaderstats.Level.Value or "N/A"))
+    print("  💰 Argent: " .. (player.leaderstats and player.leaderstats.Money and player.leaderstats.Money.Value or "N/A"))
+    print("  ⭐ XP: " .. (player.leaderstats and player.leaderstats.XP and player.leaderstats.XP.Value or "N/A"))
+    
+    print("\n🎁 RÉCOMPENSES RÉCENTES:")
+    -- Vérifier les effets de position
+    local effects = char and char:FindFirstChild("Effects") or nil
+    if effects then
+        local activeEffects = effects:GetChildren()
+        print("  ✨ Effets actifs: " .. #activeEffects)
+        for _, effect in ipairs(activeEffects) do
+            print("    🌟 " .. effect.Name)
+        end
+    else
+        print("  ❌ Aucun effet de position trouvé")
+    end
+    
+    print("\n🎮 MOD MENU:")
+    print("  🚀 Speed: " .. (isSpeedActive and "ACTIF" or "INACTIF"))
+    print("  🛡️ God Mode: " .. (isGodModeActive and "ACTIF" or "INACTIF"))
+    print("  ⚙️ Vitesse configurée: " .. speedValue)
+    
+    print("\n🔍 MONSTRES PROCHES:")
+    local monsters = {}
+    for _, obj in ipairs(workspace:GetDescendants()) do
+        if obj:IsA("Model") and obj ~= char then
+            local humanoid = obj:FindFirstChildOfClass("Humanoid")
+            local hrp = obj:FindFirstChild("HumanoidRootPart")
+            if humanoid and hrp and humanoid.Health > 0 then
+                local dist = (char.HumanoidRootPart.Position - hrp.Position).Magnitude
+                if dist < 50 then
+                    table.insert(monsters, {name = obj.Name, distance = dist, health = humanoid.Health})
+                end
+            end
+        end
+    end
+    
+    if #monsters > 0 then
+        for _, monster in ipairs(monsters) do
+            print("  👾 " .. monster.name .. " - " .. math.floor(monster.distance) .. "m - " .. math.floor(monster.health) .. " HP")
+        end
+    else
+        print("  ❌ Aucun monstre proche")
+    end
+    
+    print("🔍 ========== FIN DEBUG ==========")
 end
 
 function makeDraggable(frame)
